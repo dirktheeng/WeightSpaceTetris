@@ -149,6 +149,12 @@ Trained networks have weights that look like continuous noise. These do not, bec
 
 Most of the zeros are padding inside kernels. A 5 × 5 rotation stencil holds one `1` and twenty-four zeros, because the window has to reach two cells but only one offset matters.
 
+#### Every weight, drawn
+
+<p align="center"><a href="docs/img/weight_atlas.png"><img src="docs/img/weight_atlas.png" width="900" alt="Atlas of every kernel, scalar weight and bias in the network"></a></p>
+
+Each block is one node. Small grids are convolution kernels, one cell per weight, in the same layout as the file. Single cells are scalar weights, and the last cell is the bias. You can read the design straight off the picture: the rotation detectors (`U1` to `U12`) are pairs of one-hot grids; `Qnew` holds the seven tetromino stamps; `F`, `C` and `carry` are long strips of ones that count along a row or a column. In keeping with the project rule, the drawing script ([`docs/figures_src/weight_atlas.py`](docs/figures_src/weight_atlas.py)) does not read the weight files. Every value in it was transcribed by hand, and its totals (948 weights, 87 biases) match the hand tally above.
+
 ### From neurons to logic
 
 <p align="center"><img src="docs/img/gate.svg" alt="clamp01 and an AND gate"></p>
