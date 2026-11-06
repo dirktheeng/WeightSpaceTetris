@@ -4,9 +4,9 @@
   <g font-size="13">
     <rect x="40" y="96" width="160" height="96" rx="8" fill="#1d2027" stroke="#8b90a0"/>
     <text x="120" y="118" fill="#e7e9ee" text-anchor="middle" font-weight="bold">v(t)</text>
-    <text x="120" y="140" fill="#8b90a0" text-anchor="middle">every node's output</text>
-    <text x="120" y="158" fill="#8b90a0" text-anchor="middle">63 maps x 336 cells</text>
-    <text x="120" y="176" fill="#8b90a0" text-anchor="middle">+ 24 scalars = 21,192</text>
+    <text x="120" y="140" fill="#8b90a0" text-anchor="middle">input screen + node outputs</text>
+    <text x="120" y="158" fill="#8b90a0" text-anchor="middle">4,037 inputs +</text>
+    <text x="120" y="176" fill="#8b90a0" text-anchor="middle">21,192 node cells</text>
     <rect x="216" y="96" width="160" height="96" rx="8" fill="#1d2027" stroke="#f2a541"/>
     <text x="296" y="118" fill="#f2a541" text-anchor="middle" font-weight="bold">F</text>
     <text x="296" y="140" fill="#8b90a0" text-anchor="middle">same-tick wiring;</text>
@@ -24,7 +24,7 @@
     <text x="644" y="176" fill="#8b90a0" text-anchor="middle">every node</text>
   </g>
   <g font-size="14" fill="#e7e9ee">
-    <text x="40" y="228">F is huge if written out (about 25,000 x 25,000), but almost every entry is 0, and the</text>
+    <text x="40" y="228">F is huge if written out (about 25,200 x 25,200), but almost every entry is 0, and the</text>
     <text x="40" y="250">nonzero entries repeat: one stencil supplies the same weights to all 336 cells of a map.</text>
     <text x="40" y="272">So F is stored as 87 small files (1,035 numbers) plus graph.txt, which says how to tile them.</text>
     <text x="40" y="304" fill="#8b90a0">Because F only points from earlier levels to later ones, one sweep from level 1 to 14 computes v(t) exactly.</text>

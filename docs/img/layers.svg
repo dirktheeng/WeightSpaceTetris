@@ -9,8 +9,8 @@
       <rect x="0" y="84" width="18" height="18" rx="3" fill="#c47f1f"/><text x="30" y="98"><tspan font-weight="bold">P</tspan>  pivot of active piece</text>
       <rect x="0" y="112" width="18" height="18" rx="3" fill="#7fd18b"/><text x="30" y="126"><tspan font-weight="bold">Q</tspan>  preview piece</text>
       <rect x="0" y="140" width="18" height="18" rx="3" fill="#4fa860"/><text x="30" y="154"><tspan font-weight="bold">R</tspan>  preview pivot</text>
-      <rect x="0" y="168" width="18" height="18" rx="3" fill="#7fd18b"/><text x="30" y="182"><tspan font-weight="bold">S</tspan>  score bits (16-bit binary)</text>
-      <rect x="0" y="196" width="18" height="18" rx="3" fill="#7fd18b"/><text x="30" y="210"><tspan font-weight="bold">T</tspan>  gravity timer token</text>
+      <rect x="0" y="168" width="18" height="18" rx="3" fill="#ebcb8b"/><text x="30" y="182"><tspan font-weight="bold">S</tspan>  score bits (16-bit binary)</text>
+      <rect x="0" y="196" width="18" height="18" rx="3" fill="#b48ead"/><text x="30" y="210"><tspan font-weight="bold">T</tspan>  gravity timer token</text>
       <rect x="0" y="224" width="18" height="18" rx="3" fill="#e5484d"/><text x="30" y="238"><tspan font-weight="bold">G</tspan>  game over flag</text>
       <rect x="0" y="252" width="18" height="18" rx="3" fill="none" stroke="#8b90a0"/><text x="30" y="266"><tspan font-weight="bold">MQ</tspan>  preview anchor (static)</text>
       <rect x="0" y="280" width="18" height="18" rx="3" fill="none" stroke="#8b90a0"/><text x="30" y="294"><tspan font-weight="bold">MS</tspan>  score field (static)</text>
@@ -42,10 +42,10 @@
     <rect x="225" y="17" width="14" height="14" fill="#7fd18b"/>
     <!-- score field col 13 rows 4-19 -->
     <rect x="211" y="66" width="12" height="252" fill="none" stroke="#3a3f4b"/>
-    <rect x="212" y="306" width="10" height="10" fill="#7fd18b"/><rect x="212" y="274" width="10" height="10" fill="#7fd18b"/>
+    <rect x="212" y="306" width="10" height="10" fill="#ebcb8b"/><rect x="212" y="274" width="10" height="10" fill="#ebcb8b"/>
     <!-- timer field col 15 rows 4-10 -->
     <rect x="243" y="66" width="12" height="108" fill="none" stroke="#3a3f4b"/>
-    <rect x="245" y="100" width="8" height="8" fill="#7fd18b"/>
+    <rect x="245" y="100" width="8" height="8" fill="#b48ead"/>
     <text x="96" y="356" fill="#8b90a0" font-size="13" text-anchor="middle">10 x 20 playfield</text>
   </g>
   <g fill="#e7e9ee" font-size="13">
@@ -53,5 +53,6 @@
     <path d="M590,150 H644" stroke="#8b90a0"/><text x="650" y="154">timer (T)</text>
     <path d="M560,300 H644" stroke="#8b90a0"/><text x="650" y="296">score (S)</text>
     <text x="650" y="312" fill="#8b90a0">binary, MSB top</text>
+    <text x="650" y="328" fill="#8b90a0">shown: 101 = 5</text>
   </g>
 </svg>

@@ -1,6 +1,6 @@
 # Tetris in Weight Space: Design Note
 
-This is a complete game of Tetris on a standard 10×20 board. All of its rules live in 87 hand-written weight files, 1,035 numbers in total. Nothing was trained or generated. Each value was decided by reasoning and typed into a text file. Debugging was done by stepping the network (forward passes) and reading the weight files by eye.
+This is a complete game of Tetris on a standard 10×20 board. All of its rules live in 87 hand-written weight files, 1,035 numbers in total. Nothing was trained or generated. Each value was decided by reasoning and typed into a text file. The network was checked by stepping it (forward passes) and reading the output screens. No weight ever needed changing; the only defects found were in the host code and in one test file.
 
 ## Files
 
