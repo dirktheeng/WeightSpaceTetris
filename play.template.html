@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tetris in Weight Space</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#14161b; --panel:#1d2027; --ink:#e7e9ee; --dim:#8b90a0; --acc:#f2a541; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+         font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         display:flex; align-items:center; justify-content:center; }
+  main { display:flex; gap:28px; padding:24px; flex-wrap:wrap; justify-content:center; }
+  canvas { background:#0e1014; border-radius:8px; image-rendering:pixelated; }
+  aside { max-width:330px; }
+  h1 { font-size:20px; margin:0 0 6px; letter-spacing:.02em; }
+  p { color:var(--dim); margin:0 0 12px; }
+  .score { font: 600 34px/1 ui-monospace, Menlo, monospace; color:var(--acc); margin:6px 0 2px; }
+  .bits { font: 13px ui-monospace, Menlo, monospace; color:var(--dim); margin-bottom:14px; }
+  kbd { background:var(--panel); border:1px solid #333845; border-radius:4px; padding:1px 6px;
+        font: 12px ui-monospace, Menlo, monospace; color:var(--ink); }
+  .keys div { margin:4px 0; color:var(--dim); }
+  .status { margin-top:14px; font-weight:600; min-height:1.5em; }
+  button { margin-top:10px; background:var(--panel); color:var(--ink); border:1px solid #333845;
+           border-radius:6px; padding:6px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--acc); }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+  .legend div { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="cv" tabindex="0"></canvas>
+  <aside>
+    <h1>Tetris in weight space</h1>
+    <p>Every rule of this game is in hand-written weights and biases. The page only runs the
+       network once per tick, feeds it your keys and a random number, and draws the screen it returns.</p>
+    <p>Score: the green column of 16 cells beside the board is the network's binary count of
+       cleared lines, high bit on top.</p>
+    <div class="keys">
+      <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move</div>
+      <div><kbd>&uarr;</kbd> rotate clockwise</div>
+      <div><kbd>&darr;</kbd> soft drop</div>
+      <div><kbd>P</kbd> pause &nbsp; <kbd>N</kbd> new game</div>
+    </div>
+    <div class="legend" style="margin-top:12px">
+      <div><span style="background:#f2a541"></span>falling piece (darker cell: pivot)</div>
+      <div><span style="background:#5b8def"></span>locked cells</div>
+      <div><span style="background:#7fd18b"></span>preview, score bits, timer token</div>
+    </div>
+    <div class="status" id="status"></div>
+    <button id="restart">New game</button>
+  </aside>
+</main>
+<script>/*ENGINE*/</script>
+<script>
+const FILES = /*FILES*/;
+const g = WSP.parseGraph(FILES['graph.txt']);
+WSP.attachWeights(g, n => FILES['weights/' + n + '.txt']);
+const { H, W } = WSP;
+const CELL = 26;
+const cv = document.getElementById('cv');
+cv.width = W * CELL; cv.height = H * CELL;
+const ctx = cv.getContext('2d');
+
+let scr, queue = [], paused = false;
+function reset() { scr = WSP.decodeScreen(FILES['screen0.txt']); queue = []; paused = false; draw(); }
+
+const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd' };
+addEventListener('keydown', ev => {
+  if (KEYMAP[ev.key]) { ev.preventDefault(); if (queue.length < 2) queue.push(KEYMAP[ev.key]); }
+  else if (ev.key === 'p' || ev.key === 'P') paused = !paused;
+  else if (ev.key === 'n' || ev.key === 'N') reset();
+});
+document.getElementById('restart').onclick = () => { reset(); cv.focus(); };
+
+function tick() {
+  if (paused) { draw(); return; }
+  const k = queue.shift() || '.';
+  const inputs = { kL: +(k === 'l'), kR: +(k === 'r'), kU: +(k === 'u'), kD: +(k === 'd'), rng: Math.random() };
+  scr = WSP.step(g, scr, inputs).next;
+  draw();
+}
+
+function box(x, y, color, inset) {
+  const i = inset || 1;
+  ctx.fillStyle = color;
+  ctx.fillRect(x * CELL + i, y * CELL + i, CELL - 2 * i, CELL - 2 * i);
+}
+function draw() {
+  ctx.fillStyle = '#0e1014'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const on = (c, i) => scr[c][i] > 0.5;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    if (on('W', i)) box(x, y, '#3a3f4b', 0);
+    if (on('MS', i) || on('MT', i)) box(x, y, '#1d2027', 3);
+    if (on('L', i)) box(x, y, '#5b8def');
+    if (on('Q', i)) box(x, y, '#7fd18b');
+    if (on('S', i)) box(x, y, '#7fd18b', 3);
+    if (on('T', i)) box(x, y, '#7fd18b', 7);
+    if (on('A', i)) box(x, y, on('L', i) ? '#e5484d' : '#f2a541');
+    if (on('P', i)) box(x, y, '#c47f1f', 7);
+  }
+  const over = on('G', 0);
+  document.getElementById('status').textContent = over ? 'Game over. Press N for a new game.' : (paused ? 'Paused' : '');
+  if (over) { ctx.fillStyle = 'rgba(229,72,77,.18)'; ctx.fillRect(0, 0, cv.width, cv.height); }
+}
+
+reset(); cv.focus();
+setInterval(tick, 100);
+</script>
+</body>
+</html>

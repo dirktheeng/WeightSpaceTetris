@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tetris in Weight Space</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#14161b; --panel:#1d2027; --ink:#e7e9ee; --dim:#8b90a0; --acc:#f2a541; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+         font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         display:flex; align-items:center; justify-content:center; }
+  main { display:flex; gap:28px; padding:24px; flex-wrap:wrap; justify-content:center; }
+  canvas { background:#0e1014; border-radius:8px; image-rendering:pixelated; }
+  aside { max-width:330px; }
+  h1 { font-size:20px; margin:0 0 6px; letter-spacing:.02em; }
+  p { color:var(--dim); margin:0 0 12px; }
+  .score { font: 600 34px/1 ui-monospace, Menlo, monospace; color:var(--acc); margin:6px 0 2px; }
+  .bits { font: 13px ui-monospace, Menlo, monospace; color:var(--dim); margin-bottom:14px; }
+  kbd { background:var(--panel); border:1px solid #333845; border-radius:4px; padding:1px 6px;
+        font: 12px ui-monospace, Menlo, monospace; color:var(--ink); }
+  .keys div { margin:4px 0; color:var(--dim); }
+  .status { margin-top:14px; font-weight:600; min-height:1.5em; }
+  button { margin-top:10px; background:var(--panel); color:var(--ink); border:1px solid #333845;
+           border-radius:6px; padding:6px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--acc); }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+  .legend div { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="cv" tabindex="0"></canvas>
+  <aside>
+    <h1>Tetris in weight space</h1>
+    <p>Every rule of this game is in hand-written weights and biases. The page only runs the
+       network once per tick, feeds it your keys and a random number, and draws the screen it returns.</p>
+    <p>Score: the green column of 16 cells beside the board is the network's binary count of
+       cleared lines, high bit on top.</p>
+    <div class="keys">
+      <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move</div>
+      <div><kbd>&uarr;</kbd> rotate clockwise</div>
+      <div><kbd>&darr;</kbd> soft drop</div>
+      <div><kbd>P</kbd> pause &nbsp; <kbd>N</kbd> new game</div>
+    </div>
+    <div class="legend" style="margin-top:12px">
+      <div><span style="background:#f2a541"></span>falling piece (darker cell: pivot)</div>
+      <div><span style="background:#5b8def"></span>locked cells</div>
+      <div><span style="background:#7fd18b"></span>preview, score bits, timer token</div>
+    </div>
+    <div class="status" id="status"></div>
+    <button id="restart">New game</button>
+  </aside>
+</main>
+<script>// Generic executor for the hand-written network. It contains no Tetris logic.
+// It knows only two node types (map, scalar), one activation (clamp01),
+// zero-padded "same" convolution, global sum, and scalar broadcast.
+// Works in Node and in the browser.
+(function (root) {
+  const H = 21, W = 16;
+  const CHANNELS = ['W', 'L', 'A', 'P', 'Q', 'R', 'S', 'T', 'G', 'MQ', 'MS', 'MT'];
+  const SCALAR_INPUTS = ['kL', 'kR', 'kU', 'kD', 'rng'];
+  // Character legend for screen files and text rendering (pure encoding).
+  const LEGEND = {
+    '.': [], '#': ['W'], 'x': ['L'], 'a': ['A'], 'p': ['A', 'P'],
+    'q': ['Q'], 'r': ['Q', 'R'], 'm': ['MQ'], 's': ['MS'], 'S': ['MS', 'S'],
+    't': ['MT'], 'T': ['MT', 'T'], '!': ['A', 'L'],
+  };
+
+  const acts = {
+    clamp01: v => (v < 0 ? 0 : v > 1 ? 1 : v),
+    id: v => v,
+  };
+
+  function parseGraph(text) {
+    const nodes = [], outs = {};
+    for (let raw of text.split('\n')) {
+      const line = raw.replace(/#.*/, '').trim();
+      if (!line) continue;
+      const tok = line.split(/\s+/);
+      if (tok[0] === 'out') { outs[tok[1]] = tok[2]; continue; }
+      const [type, name, act, ...ins] = tok;
+      const inputs = ins.map(s => {
+        const [src, win] = s.split(':');
+        if (!win) return { src, h: 0, w: 0, n: 1 };
+        const [h, w] = win.split('x').map(Number);
+        return { src, h, w, n: h * w };
+      });
+      nodes.push({ type, name, act, inputs });
+    }
+    return { nodes, outs };
+  }
+
+  function parseNums(text) {
+    return text.trim().split(/\s+/).filter(Boolean).map(Number);
+  }
+
+  function attachWeights(graph, getFile) {
+    for (const nd of graph.nodes) {
+      const nums = parseNums(getFile(nd.name));
+      let k = 0;
+      for (const inp of nd.inputs) { inp.k = nums.slice(k, k + inp.n); k += inp.n; }
+      if (nums.length !== k + 1)
+        throw new Error(`weights/${nd.name}.txt: expected ${k + 1} values, got ${nums.length}`);
+      nd.bias = nums[k];
+    }
+  }
+
+  const zeros = () => new Float64Array(H * W);
+
+  function conv(src, k, kh, kw, acc) {
+    const ch = (kh - 1) >> 1, cw = (kw - 1) >> 1;
+    for (let i = 0; i < kh; i++) for (let j = 0; j < kw; j++) {
+      const wv = k[i * kw + j];
+      if (wv === 0) continue;
+      const dy = i - ch, dx = j - cw;
+      for (let y = 0; y < H; y++) {
+        const yy = y + dy; if (yy < 0 || yy >= H) continue;
+        for (let x = 0; x < W; x++) {
+          const xx = x + dx; if (xx < 0 || xx >= W) continue;
+          acc[y * W + x] += wv * src[yy * W + xx];
+        }
+      }
+    }
+  }
+  const total = m => { let s = 0; for (const v of m) s += v; return s; };
+
+  // One forward pass: screen (channel maps) + scalar inputs -> next screen.
+  function step(graph, screen, scalars) {
+    const env = Object.assign({}, screen, scalars);
+    for (const nd of graph.nodes) {
+      const f = acts[nd.act];
+      if (nd.type === 'map') {
+        const acc = zeros().fill(nd.bias);
+        for (const inp of nd.inputs) {
+          const v = env[inp.src];
+          if (v === undefined) throw new Error(`${nd.name}: unknown input ${inp.src}`);
+          if (inp.h) conv(v, inp.k, inp.h, inp.w, acc);
+          else for (let c = 0; c < acc.length; c++) acc[c] += inp.k[0] * v;
+        }
+        for (let c = 0; c < acc.length; c++) acc[c] = f(acc[c]);
+        env[nd.name] = acc;
+      } else {
+        let s = nd.bias;
+        for (const inp of nd.inputs) {
+          const v = env[inp.src];
+          if (v === undefined) throw new Error(`${nd.name}: unknown input ${inp.src}`);
+          s += inp.k[0] * (typeof v === 'number' ? v : total(v));
+        }
+        env[nd.name] = f(s);
+      }
+    }
+    const next = {};
+    for (const c of CHANNELS) next[c] = env[graph.outs[c]];
+    return { next, env };
+  }
+
+  function decodeScreen(text) {
+    const rows = text.split('\n').filter(r => r.length);
+    const scr = {}; for (const c of CHANNELS) scr[c] = zeros();
+    rows.forEach((row, y) => {
+      for (let x = 0; x < W; x++) {
+        const ch = row[x] || '.';
+        for (const c of (LEGEND[ch] || [])) scr[c][y * W + x] = 1;
+      }
+    });
+    return scr;
+  }
+
+  function encodeScreen(scr) {
+    const at = (c, i) => scr[c][i] > 0.5;
+    let out = at('G', 0) ? 'GAME OVER\n' : '';
+    for (let y = 0; y < H; y++) {
+      let row = '';
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        let ch = '.';
+        if (at('W', i)) ch = '#';
+        else if (at('A', i) && at('L', i)) ch = '!';
+        else if (at('P', i)) ch = 'p';
+        else if (at('A', i)) ch = 'a';
+        else if (at('L', i)) ch = 'x';
+        else if (at('R', i)) ch = 'r';
+        else if (at('Q', i)) ch = 'q';
+        else if (at('S', i)) ch = 'S';
+        else if (at('T', i)) ch = 'T';
+        else if (at('MQ', i)) ch = 'm';
+        else if (at('MS', i)) ch = 's';
+        else if (at('MT', i)) ch = 't';
+        row += ch;
+      }
+      out += row + '\n';
+    }
+    return out;
+  }
+
+  const api = { H, W, CHANNELS, SCALAR_INPUTS, parseGraph, attachWeights, step, decodeScreen, encodeScreen };
+  if (typeof module !== 'undefined') module.exports = api; else root.WSP = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+const FILES = {"graph.txt":"# Architecture of the Tetris network (structure only, no values).\n# map    NAME act inputs : output is a 21x16 map. A map input \"X:hxw\" is convolved\n#                          with an h x w kernel (zero padded, centered); a scalar\n#                          input \"s\" is broadcast to every cell with one weight.\n# scalar NAME act inputs : output is one number. A map input contributes its\n#                          global sum times one weight; a scalar input its value.\n# Every node adds a bias. All values live in weights/NAME.txt in input order,\n# bias last. Every node uses clamp01(v) = min(1, max(0, v)).\n\n# --- global facts about the incoming screen ---\nscalar g0   clamp01 G\nscalar aE   clamp01 A\nmap    F    clamp01 L:1x19\nscalar fF   clamp01 F\nscalar gt   clamp01 T\n\n# --- stage 1: player move (left, right, rotate) ---\nmap    ovL  clamp01 A:1x3 W:1x1 L:1x1\nmap    ovR  clamp01 A:1x3 W:1x1 L:1x1\nmap    U1   clamp01 P:3x3 A:3x3\nmap    U2   clamp01 P:3x3 A:3x3\nmap    U3   clamp01 P:3x3 A:3x3\nmap    U4   clamp01 P:3x3 A:3x3\nmap    U5   clamp01 P:3x3 A:5x5\nmap    U6   clamp01 P:3x3 A:5x5\nmap    U7   clamp01 P:3x3 A:5x5\nmap    U8   clamp01 P:3x3 A:5x5\nmap    U9   clamp01 P:5x5 A:5x5\nmap    U10  clamp01 P:5x5 A:5x5\nmap    U11  clamp01 P:5x5 A:5x5\nmap    U12  clamp01 P:5x5 A:5x5\nmap    AU   clamp01 P:1x1 U1:1x1 U2:1x1 U3:1x1 U4:1x1 U5:1x1 U6:1x1 U7:1x1 U8:1x1 U9:1x1 U10:1x1 U11:1x1 U12:1x1\nmap    ovU  clamp01 AU:1x1 W:1x1 L:1x1\nscalar okL  clamp01 ovL\nscalar okR  clamp01 ovR\nscalar okU  clamp01 AU ovU\nscalar mL   clamp01 kL okL g0\nscalar mR   clamp01 kR okR g0\nscalar mU   clamp01 kU okU g0\nscalar st1  clamp01 mL mR mU\nmap    A1L  clamp01 A:1x3 mL\nmap    A1R  clamp01 A:1x3 mR\nmap    A1U  clamp01 AU:1x1 mU\nmap    A1S  clamp01 A:1x1 st1\nmap    A1   clamp01 A1L:1x1 A1R:1x1 A1U:1x1 A1S:1x1\nmap    P1L  clamp01 P:1x3 mL\nmap    P1R  clamp01 P:1x3 mR\nmap    P1S  clamp01 P:1x1 mU st1\nmap    P1   clamp01 P1L:1x1 P1R:1x1 P1S:1x1\n\n# --- stage 2: gravity, soft drop and locking ---\nmap    ovD  clamp01 A1:3x1 W:1x1 L:1x1\nscalar okD  clamp01 ovD\nscalar g    clamp01 gt kD g0\nscalar mD   clamp01 g okD\nscalar lock clamp01 g okD\nscalar st2  clamp01 mD lock\nmap    A2D  clamp01 A1:3x1 mD\nmap    A2S  clamp01 A1:1x1 st2\nmap    P2D  clamp01 P1:3x1 mD\nmap    P2S  clamp01 P1:1x1 st2\n\n# --- stage 3: spawn from the preview box, game over ---\nscalar e    clamp01 aE fF g0\nmap    ASp  clamp01 Q:1x17 e\nmap    PSp  clamp01 R:1x17 e\nmap    Anew clamp01 A2D:1x1 A2S:1x1 ASp:1x1\nmap    Pnew clamp01 P2D:1x1 P2S:1x1 PSp:1x1\nmap    ovS  clamp01 Q:1x17 L:1x1 e\nscalar ge   clamp01 ovS\nmap    Gnew clamp01 g0 ge\n\n# --- locked cells: lock the piece, clear one full row per step ---\nmap    LK    clamp01 A1:1x1 lock\nmap    C     clamp01 F:39x1\nmap    LKeep clamp01 L:1x1 C:1x1\nmap    LSh   clamp01 L:3x1 C:1x1\nmap    Lnew  clamp01 LKeep:1x1 LSh:1x1 LK:1x1\n\n# --- new preview piece from the random number ---\nscalar h1   clamp01 rng\nscalar h2   clamp01 rng\nscalar h3   clamp01 rng\nscalar h4   clamp01 rng\nscalar h5   clamp01 rng\nscalar h6   clamp01 rng\nmap    D0   clamp01 MQ:1x1 h1 e\nmap    D1   clamp01 MQ:1x1 h1 h2 e\nmap    D2   clamp01 MQ:1x1 h2 h3 e\nmap    D3   clamp01 MQ:1x1 h3 h4 e\nmap    D4   clamp01 MQ:1x1 h4 h5 e\nmap    D5   clamp01 MQ:1x1 h5 h6 e\nmap    D6   clamp01 MQ:1x1 h6 e\nmap    QK   clamp01 Q:1x1 e\nmap    RK   clamp01 R:1x1 e\nmap    Qnew clamp01 QK:1x1 D0:5x5 D1:5x5 D2:5x5 D3:5x5 D4:5x5 D5:5x5 D6:5x5\nmap    Rnew clamp01 RK:1x1 D0:1x1 D2:1x1 D3:1x1 D4:1x1 D5:1x1 D6:1x1\n\n# --- gravity timer ---\nmap    TS   clamp01 T:3x1 MT:1x1\nmap    TI   clamp01 MT:3x1 gt\nmap    Tnew clamp01 TS:1x1 TI:1x1\n\n# --- score: binary counter of cleared lines ---\nmap    carry clamp01 S:31x1 MS:31x1 fF\nmap    SC    clamp01 S:1x1 carry:1x1\nmap    Snew  clamp01 S:1x1 carry:1x1 SC:1x1\n\n# --- fixtures copied through unchanged ---\nmap    Wc   clamp01 W:1x1\nmap    MQc  clamp01 MQ:1x1\nmap    MSc  clamp01 MS:1x1\nmap    MTc  clamp01 MT:1x1\n\nout W  Wc\nout L  Lnew\nout A  Anew\nout P  Pnew\nout Q  Qnew\nout R  Rnew\nout S  Snew\nout T  Tnew\nout G  Gnew\nout MQ MQc\nout MS MSc\nout MT MTc\n","screen0.txt":"#..........#....\n#..........#.m..\n#..........#....\n#..........#....\n#..........#.s.t\n#..........#.s.t\n#..........#.s.t\n#..........#.s.t\n#..........#.s.t\n#..........#.s.t\n#..........#.s.t\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n#..........#.s..\n############....\n","weights/A1.txt":"1\n1\n1\n1\n0\n","weights/A1L.txt":"0 0 1\n1\n-1\n","weights/A1R.txt":"1 0 0\n1\n-1\n","weights/A1S.txt":"1\n1\n-1\n","weights/A1U.txt":"1\n1\n-1\n","weights/A2D.txt":"1\n0\n0\n1\n-1\n","weights/A2S.txt":"1\n1\n-1\n","weights/ASp.txt":"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1\n1\n-1\n","weights/AU.txt":"1\n1 1 1 1\n1 1 1 1\n1 1 1 1\n0\n","weights/Anew.txt":"1\n1\n1\n0\n","weights/C.txt":"0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n0\n","weights/D0.txt":"1\n-1\n1\n-1\n","weights/D1.txt":"1\n1\n-1\n1\n-2\n","weights/D2.txt":"1\n1\n-1\n1\n-2\n","weights/D3.txt":"1\n1\n-1\n1\n-2\n","weights/D4.txt":"1\n1\n-1\n1\n-2\n","weights/D5.txt":"1\n1\n-1\n1\n-2\n","weights/D6.txt":"1\n1\n1\n-2\n","weights/F.txt":"1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1\n-9\n","weights/Gnew.txt":"1\n1\n0\n","weights/LK.txt":"1\n1\n-1\n","weights/LKeep.txt":"1\n-1\n0\n","weights/LSh.txt":"1\n0\n0\n1\n-1\n","weights/Lnew.txt":"1\n1\n1\n0\n","weights/MQc.txt":"1\n0\n","weights/MSc.txt":"1\n0\n","weights/MTc.txt":"1\n0\n","weights/P1.txt":"1\n1\n1\n0\n","weights/P1L.txt":"0 0 1\n1\n-1\n","weights/P1R.txt":"1 0 0\n1\n-1\n","weights/P1S.txt":"1\n1\n1\n-1\n","weights/P2D.txt":"1\n0\n0\n1\n-1\n","weights/P2S.txt":"1\n1\n-1\n","weights/PSp.txt":"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1\n1\n-1\n","weights/Pnew.txt":"1\n1\n1\n0\n","weights/QK.txt":"1\n-1\n0\n","weights/Qnew.txt":"1\n\n0 0 0 0 0\n0 0 0 0 0\n1 1 1 1 0\n0 0 0 0 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 1 1 0 0\n0 1 1 0 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 1 1 1 0\n0 0 1 0 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 0 1 1 0\n0 1 1 0 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 1 1 0 0\n0 0 1 1 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 1 1 1 0\n0 0 0 1 0\n0 0 0 0 0\n\n0 0 0 0 0\n0 0 0 0 0\n0 1 1 1 0\n0 1 0 0 0\n0 0 0 0 0\n\n0\n","weights/RK.txt":"1\n-1\n0\n","weights/Rnew.txt":"1\n1\n1\n1\n1\n1\n1\n0\n","weights/SC.txt":"1\n1\n-1\n","weights/Snew.txt":"1\n1\n-2\n0\n","weights/TI.txt":"-1\n1\n0\n1\n-1\n","weights/TS.txt":"1\n0\n0\n1\n-1\n","weights/Tnew.txt":"1\n1\n0\n","weights/U1.txt":"0 1 0\n0 0 0\n0 0 0\n0 0 1\n0 0 0\n0 0 0\n-1\n","weights/U10.txt":"0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 1\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 1\n-1\n","weights/U11.txt":"0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 1 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n1 0 0 0 0\n-1\n","weights/U12.txt":"0 0 0 0 0\n0 0 0 0 0\n1 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n1 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n-1\n","weights/U2.txt":"0 0 0\n0 0 1\n0 0 0\n0 0 0\n0 0 0\n0 0 1\n-1\n","weights/U3.txt":"0 0 0\n0 0 0\n0 1 0\n0 0 0\n0 0 0\n1 0 0\n-1\n","weights/U4.txt":"0 0 0\n1 0 0\n0 0 0\n1 0 0\n0 0 0\n0 0 0\n-1\n","weights/U5.txt":"0 0 1\n0 0 0\n0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 1\n0 0 0 0 0\n0 0 0 0 0\n-1\n","weights/U6.txt":"0 0 0\n0 0 0\n0 0 1\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 1 0 0\n-1\n","weights/U7.txt":"0 0 0\n0 0 0\n1 0 0\n0 0 0 0 0\n0 0 0 0 0\n1 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n-1\n","weights/U8.txt":"1 0 0\n0 0 0\n0 0 0\n0 0 1 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n-1\n","weights/U9.txt":"0 0 1 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 1\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n0 0 0 0 0\n-1\n","weights/Wc.txt":"1\n0\n","weights/aE.txt":"-1\n1\n","weights/carry.txt":"0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n\n1\n-1\n","weights/e.txt":"1\n-1\n-1\n0\n","weights/fF.txt":"1\n0\n","weights/g.txt":"1\n1\n-2\n0\n","weights/g0.txt":"1\n0\n","weights/ge.txt":"1\n0\n","weights/gt.txt":"-1\n1\n","weights/h1.txt":"7000000000\n-1000000000\n","weights/h2.txt":"7000000000\n-2000000000\n","weights/h3.txt":"7000000000\n-3000000000\n","weights/h4.txt":"7000000000\n-4000000000\n","weights/h5.txt":"7000000000\n-5000000000\n","weights/h6.txt":"7000000000\n-6000000000\n","weights/lock.txt":"1\n-1\n0\n","weights/mD.txt":"1\n1\n-1\n","weights/mL.txt":"1\n1\n-1\n-1\n","weights/mR.txt":"1\n1\n-1\n-1\n","weights/mU.txt":"1\n1\n-1\n-1\n","weights/okD.txt":"-1\n1\n","weights/okL.txt":"-1\n1\n","weights/okR.txt":"-1\n1\n","weights/okU.txt":"1\n-10\n-3\n","weights/ovD.txt":"1\n0\n0\n1\n1\n-1\n","weights/ovL.txt":"0 0 1\n1\n1\n-1\n","weights/ovR.txt":"1 0 0\n1\n1\n-1\n","weights/ovS.txt":"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1\n1\n1\n-2\n","weights/ovU.txt":"1\n1\n1\n-1\n","weights/st1.txt":"-1\n-1\n-1\n1\n","weights/st2.txt":"-1\n-1\n1\n"};
+const g = WSP.parseGraph(FILES['graph.txt']);
+WSP.attachWeights(g, n => FILES['weights/' + n + '.txt']);
+const { H, W } = WSP;
+const CELL = 26;
+const cv = document.getElementById('cv');
+cv.width = W * CELL; cv.height = H * CELL;
+const ctx = cv.getContext('2d');
+
+let scr, queue = [], paused = false;
+function reset() { scr = WSP.decodeScreen(FILES['screen0.txt']); queue = []; paused = false; draw(); }
+
+const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd' };
+addEventListener('keydown', ev => {
+  if (KEYMAP[ev.key]) { ev.preventDefault(); if (queue.length < 2) queue.push(KEYMAP[ev.key]); }
+  else if (ev.key === 'p' || ev.key === 'P') paused = !paused;
+  else if (ev.key === 'n' || ev.key === 'N') reset();
+});
+document.getElementById('restart').onclick = () => { reset(); cv.focus(); };
+
+function tick() {
+  if (paused) { draw(); return; }
+  const k = queue.shift() || '.';
+  const inputs = { kL: +(k === 'l'), kR: +(k === 'r'), kU: +(k === 'u'), kD: +(k === 'd'), rng: Math.random() };
+  scr = WSP.step(g, scr, inputs).next;
+  draw();
+}
+
+function box(x, y, color, inset) {
+  const i = inset || 1;
+  ctx.fillStyle = color;
+  ctx.fillRect(x * CELL + i, y * CELL + i, CELL - 2 * i, CELL - 2 * i);
+}
+function draw() {
+  ctx.fillStyle = '#0e1014'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const on = (c, i) => scr[c][i] > 0.5;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    if (on('W', i)) box(x, y, '#3a3f4b', 0);
+    if (on('MS', i) || on('MT', i)) box(x, y, '#1d2027', 3);
+    if (on('L', i)) box(x, y, '#5b8def');
+    if (on('Q', i)) box(x, y, '#7fd18b');
+    if (on('S', i)) box(x, y, '#7fd18b', 3);
+    if (on('T', i)) box(x, y, '#7fd18b', 7);
+    if (on('A', i)) box(x, y, on('L', i) ? '#e5484d' : '#f2a541');
+    if (on('P', i)) box(x, y, '#c47f1f', 7);
+  }
+  const over = on('G', 0);
+  document.getElementById('status').textContent = over ? 'Game over. Press N for a new game.' : (paused ? 'Paused' : '');
+  if (over) { ctx.fillStyle = 'rgba(229,72,77,.18)'; ctx.fillRect(0, 0, cv.width, cv.height); }
+}
+
+reset(); cv.focus();
+setInterval(tick, 100);
+</script>
+</body>
+</html>

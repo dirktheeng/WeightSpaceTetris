@@ -1,0 +1,126 @@
+# Architecture of the Tetris network (structure only, no values).
+# map    NAME act inputs : output is a 21x16 map. A map input "X:hxw" is convolved
+#                          with an h x w kernel (zero padded, centered); a scalar
+#                          input "s" is broadcast to every cell with one weight.
+# scalar NAME act inputs : output is one number. A map input contributes its
+#                          global sum times one weight; a scalar input its value.
+# Every node adds a bias. All values live in weights/NAME.txt in input order,
+# bias last. Every node uses clamp01(v) = min(1, max(0, v)).
+
+# --- global facts about the incoming screen ---
+scalar g0   clamp01 G
+scalar aE   clamp01 A
+map    F    clamp01 L:1x19
+scalar fF   clamp01 F
+scalar gt   clamp01 T
+
+# --- stage 1: player move (left, right, rotate) ---
+map    ovL  clamp01 A:1x3 W:1x1 L:1x1
+map    ovR  clamp01 A:1x3 W:1x1 L:1x1
+map    U1   clamp01 P:3x3 A:3x3
+map    U2   clamp01 P:3x3 A:3x3
+map    U3   clamp01 P:3x3 A:3x3
+map    U4   clamp01 P:3x3 A:3x3
+map    U5   clamp01 P:3x3 A:5x5
+map    U6   clamp01 P:3x3 A:5x5
+map    U7   clamp01 P:3x3 A:5x5
+map    U8   clamp01 P:3x3 A:5x5
+map    U9   clamp01 P:5x5 A:5x5
+map    U10  clamp01 P:5x5 A:5x5
+map    U11  clamp01 P:5x5 A:5x5
+map    U12  clamp01 P:5x5 A:5x5
+map    AU   clamp01 P:1x1 U1:1x1 U2:1x1 U3:1x1 U4:1x1 U5:1x1 U6:1x1 U7:1x1 U8:1x1 U9:1x1 U10:1x1 U11:1x1 U12:1x1
+map    ovU  clamp01 AU:1x1 W:1x1 L:1x1
+scalar okL  clamp01 ovL
+scalar okR  clamp01 ovR
+scalar okU  clamp01 AU ovU
+scalar mL   clamp01 kL okL g0
+scalar mR   clamp01 kR okR g0
+scalar mU   clamp01 kU okU g0
+scalar st1  clamp01 mL mR mU
+map    A1L  clamp01 A:1x3 mL
+map    A1R  clamp01 A:1x3 mR
+map    A1U  clamp01 AU:1x1 mU
+map    A1S  clamp01 A:1x1 st1
+map    A1   clamp01 A1L:1x1 A1R:1x1 A1U:1x1 A1S:1x1
+map    P1L  clamp01 P:1x3 mL
+map    P1R  clamp01 P:1x3 mR
+map    P1S  clamp01 P:1x1 mU st1
+map    P1   clamp01 P1L:1x1 P1R:1x1 P1S:1x1
+
+# --- stage 2: gravity, soft drop and locking ---
+map    ovD  clamp01 A1:3x1 W:1x1 L:1x1
+scalar okD  clamp01 ovD
+scalar g    clamp01 gt kD g0
+scalar mD   clamp01 g okD
+scalar lock clamp01 g okD
+scalar st2  clamp01 mD lock
+map    A2D  clamp01 A1:3x1 mD
+map    A2S  clamp01 A1:1x1 st2
+map    P2D  clamp01 P1:3x1 mD
+map    P2S  clamp01 P1:1x1 st2
+
+# --- stage 3: spawn from the preview box, game over ---
+scalar e    clamp01 aE fF g0
+map    ASp  clamp01 Q:1x17 e
+map    PSp  clamp01 R:1x17 e
+map    Anew clamp01 A2D:1x1 A2S:1x1 ASp:1x1
+map    Pnew clamp01 P2D:1x1 P2S:1x1 PSp:1x1
+map    ovS  clamp01 Q:1x17 L:1x1 e
+scalar ge   clamp01 ovS
+map    Gnew clamp01 g0 ge
+
+# --- locked cells: lock the piece, clear one full row per step ---
+map    LK    clamp01 A1:1x1 lock
+map    C     clamp01 F:39x1
+map    LKeep clamp01 L:1x1 C:1x1
+map    LSh   clamp01 L:3x1 C:1x1
+map    Lnew  clamp01 LKeep:1x1 LSh:1x1 LK:1x1
+
+# --- new preview piece from the random number ---
+scalar h1   clamp01 rng
+scalar h2   clamp01 rng
+scalar h3   clamp01 rng
+scalar h4   clamp01 rng
+scalar h5   clamp01 rng
+scalar h6   clamp01 rng
+map    D0   clamp01 MQ:1x1 h1 e
+map    D1   clamp01 MQ:1x1 h1 h2 e
+map    D2   clamp01 MQ:1x1 h2 h3 e
+map    D3   clamp01 MQ:1x1 h3 h4 e
+map    D4   clamp01 MQ:1x1 h4 h5 e
+map    D5   clamp01 MQ:1x1 h5 h6 e
+map    D6   clamp01 MQ:1x1 h6 e
+map    QK   clamp01 Q:1x1 e
+map    RK   clamp01 R:1x1 e
+map    Qnew clamp01 QK:1x1 D0:5x5 D1:5x5 D2:5x5 D3:5x5 D4:5x5 D5:5x5 D6:5x5
+map    Rnew clamp01 RK:1x1 D0:1x1 D2:1x1 D3:1x1 D4:1x1 D5:1x1 D6:1x1
+
+# --- gravity timer ---
+map    TS   clamp01 T:3x1 MT:1x1
+map    TI   clamp01 MT:3x1 gt
+map    Tnew clamp01 TS:1x1 TI:1x1
+
+# --- score: binary counter of cleared lines ---
+map    carry clamp01 S:31x1 MS:31x1 fF
+map    SC    clamp01 S:1x1 carry:1x1
+map    Snew  clamp01 S:1x1 carry:1x1 SC:1x1
+
+# --- fixtures copied through unchanged ---
+map    Wc   clamp01 W:1x1
+map    MQc  clamp01 MQ:1x1
+map    MSc  clamp01 MS:1x1
+map    MTc  clamp01 MT:1x1
+
+out W  Wc
+out L  Lnew
+out A  Anew
+out P  Pnew
+out Q  Qnew
+out R  Rnew
+out S  Snew
+out T  Tnew
+out G  Gnew
+out MQ MQc
+out MS MSc
+out MT MTc
