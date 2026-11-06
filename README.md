@@ -1,374 +1,356 @@
 # WeightSpaceTetris
 
-**A complete, playable game of Tetris where every rule lives inside a small neural network whose numbers were written by hand.**
+**Tetris implemented as a hand-programmed convolutional threshold network. No training, no weight generators: 87 nodes, 1,035 hand-written parameters.**
 
 <p align="center"><img src="docs/img/full_game.gif" alt="A full game played on the network, from empty board to game over" width="300"></p>
 
-Every frame above was produced by the network itself. Nothing was trained. No program generated the numbers. Each of the 1,035 numbers that make the game work was reasoned out and typed into a plain text file, and it can be read and explained one by one.
+Every frame above is a forward pass of the network. The game state is a 12-channel binary image. The network maps (state, key, random number) to the next state, and the host loop feeds each output back in as the next input. Every weight was derived by reasoning and written into a plain-text file; there is no optimizer, compiler or code generator anywhere in the pipeline.
 
-**Play it:** download the repository and open `play.html` in any browser. Use the arrow keys: left and right move, up rotates, down drops faster. P pauses and N starts a new game.
+**Play:** clone the repository and open `play.html`. Arrow keys move, rotate (up) and soft drop (down); P pauses and N starts a new game.
 
 ---
 
 ## Contents
 
-1. [How this started: the goal](#1-how-this-started-the-goal)
-2. [Where this fits among prior work](#2-where-this-fits-among-prior-work)
-3. [The big picture](#3-the-big-picture)
-4. [A neuron is a light switch with a dial](#4-a-neuron-is-a-light-switch-with-a-dial)
-5. [The screen is the memory](#5-the-screen-is-the-memory)
-6. [Stencils: one rule, written once, used everywhere](#6-stencils-one-rule-written-once-used-everywhere)
-7. [One step of the game, stage by stage](#7-one-step-of-the-game-stage-by-stage)
-8. [Every part of the network, explained](#8-every-part-of-the-network-explained)
-9. [The code around the network](#9-the-code-around-the-network)
-10. [The decisions, and why they were made](#10-the-decisions-and-why-they-were-made)
-11. [How it was built, checked and debugged](#11-how-it-was-built-checked-and-debugged)
-12. [Limits and honest caveats](#12-limits-and-honest-caveats)
-13. [Files and how to run things](#13-files-and-how-to-run-things)
+1. [Problem statement and constraints](#1-problem-statement-and-constraints)
+2. [Related work](#2-related-work)
+3. [System overview](#3-system-overview)
+4. [Computational model](#4-computational-model)
+5. [State representation](#5-state-representation)
+6. [Network walkthrough](#6-network-walkthrough)
+7. [Host framework](#7-host-framework)
+8. [Design decisions](#8-design-decisions)
+9. [Verification](#9-verification)
+10. [Limitations](#10-limitations)
+11. [Repository layout and usage](#11-repository-layout-and-usage)
 
 ---
 
-## 1. How this started: the goal
+## 1. Problem statement and constraints
 
-The project began with a challenge. Could a language model build Tetris using **weight-space programming**? That is the idea, described in [this blog post](https://rikiyat.github.io/blog/weight-space-programming/), that a model can write a neural network's weights directly from a description of what the network should do. Normally a network learns its weights from thousands of examples. Here, nothing is learned. The weights are *programmed*, the way you would write code.
+The goal was to test **weight-space programming** ([blog post](https://rikiyat.github.io/blog/weight-space-programming/)) on a complete interactive program. The method has a general-purpose language model write a network's parameters directly from a natural-language specification, with no gradient-based optimization. The full specification is in [`GOAL.md`](GOAL.md). Its constraints were:
 
-The rules were strict, and they were agreed on before any work started. The full statement is in [`GOAL.md`](GOAL.md). In short:
+* **Parameters are text.** Every weight and bias is a float in a text file, and it may only be created or changed by editing that file.
+* **No training.** No gradient descent, evolutionary search, RL or data fitting.
+* **No generators.** No script, template or formula engine may emit parameter values.
+* **Read-only debugging.** Forward passes may be run to observe failures. Interpreting the weights must be done by reading them directly, not with analysis tooling.
+* **Thin host.** The framework only loads parameters, applies the fixed architecture, encodes input, supplies an RNG sample and renders output. It may not contain game logic.
 
-* **Every weight and bias lives in a plain text file of numbers.** The only way to change one is to open the file and edit it.
-* **No training of any kind.** No gradient descent, no evolution, no fitting to data.
-* **No generators.** No script may produce weight values. Each number is decided by reasoning and written by hand.
-* **Debugging is done by reading.** Running the game to watch a failure is allowed. Writing a program to analyze the weights is not; the cause has to be found by reading the numbers.
-* **The framework around the network is thin.** It loads the files, passes in keys and a random number, and draws the screen. It may not contain any Tetris rule.
+Clarifications settled before implementation:
 
-A few questions were settled in conversation before the goal was final:
-
-| Question | Decision |
+| Question | Resolution |
 |---|---|
-| May the game be run during debugging? | Yes, forward passes (running the network) are allowed. |
-| Where does randomness come from? | The framework supplies one random number per step. The network turns it into a piece. |
-| What goes in and what comes out? | The current **screen** plus keys go in, and the next **screen** comes out. |
-| Board size? | Standard 10 wide by 20 tall. |
-| How big should the network be? | As compact as possible, with every choice explainable. |
-| Which activation functions? | Any, as long as the reason is stated. |
+| Forward passes during debugging | Allowed |
+| Randomness | The host supplies one uniform sample per step; mapping it to a piece is done in-network |
+| I/O | The screen and key state go in; the next screen comes out |
+| Board | Standard 10 × 20 |
+| Size | Minimize, and justify every architectural choice |
+| Activations | Unrestricted, with a stated rationale |
 
-Success meant four things. A person can play a complete game. All seven pieces behave correctly. An audit shows no game logic outside the network. And a design note explains every part.
+Acceptance criteria: a complete game is playable from start to top-out; all seven tetrominoes spawn, move, rotate, lock, clear and score correctly; a source audit finds no logic outside the network; and a design note documents every parameter file.
 
-## 2. Where this fits among prior work
+## 2. Related work
 
-People have connected neural networks and logic, games and computation for a long time. This project borrows from several of those threads, and its particular combination is new.
+**Threshold logic.** McCulloch and Pitts (1943) showed that units computing a thresholded weighted sum realize Boolean functions, so networks of them can implement any finite-state machine. This project uses exactly that model: every node is a threshold gate over {0,1} inputs.
 
-**Neurons as logic gates (1943 onward).** The founding idea of the field was that an idealized neuron, adding up its inputs and comparing them to a threshold, behaves like a logic gate. With enough gates you can compute anything. This project rests directly on that idea: every one of its 87 nodes is a threshold gate doing AND, OR, NOT or "at least k".
+**Hand-set convolutional networks for cellular automata.** Springer and Kenyon ([2020](https://arxiv.org/abs/2009.01398)) hand-built a minimal convolutional network that implements Conway's Game of Life exactly. Their finding was that networks with the same minimal architecture rarely learned the rule through training, and training only succeeded reliably with substantial overparameterization. That is a direct argument for programming small exact networks rather than training them. Tetris goes well beyond Life, however. Life's update is a single local 3×3 rule. Tetris needs **global reductions** (is any cell of the candidate move blocked? is any row full? is the game over?), **conditional branching** on those reductions, **persistent counters** (gravity timer, score), **stochastic input** and **player input**. This work extends the hand-set convolutional approach with scalar reduction/broadcast nodes to cover those.
 
-**Hand-set weights for a cellular automaton.** The closest relative is work on Conway's Game of Life, a grid "game" whose rule looks only at a cell's neighbors. Springer and Kenyon pointed out that because Life's rule only looks at a 3x3 neighborhood, a purely convolutional network can compute it. They wrote such a network's weights by hand and got perfect accuracy. Their main finding is a strong argument for programming weights directly: networks with that same minimal shape, when *trained*, rarely found the solution, and training only succeeded reliably with much larger networks. Tetris is much harder than Life, though. Life's rule is purely local. Tetris needs global decisions: "is this *whole* move blocked?", "is this row full?", "has the game ended?". It also needs memory, randomness and player input. This project extends the hand-set convolutional approach to all of those.
+**Compiled networks.** Tracr ([Lindner et al., 2023](https://arxiv.org/abs/2301.05062)) compiles RASP programs into transformer weights to produce interpretability testbeds whose ground-truth mechanisms are known. Looped transformers ([Giannou et al., ICML 2023](https://proceedings.mlr.press/v202/giannou23a.html)) construct fixed weights so that a transformer run in a loop emulates a small instruction-set computer. Both show that weights can encode programs. Both, however, obtain the weights through a compiler or a mathematical construction. Here, each parameter is written individually, and the generator ban rules out a compiler. The looped transformers' execution model (the output re-enters as the next input) matches this project's screen-to-screen recurrence.
 
-**Compiling programs into network weights.** Tracr, from DeepMind, is a compiler that turns short human-readable programs into the weights of a transformer. It was built so interpretability researchers would have networks whose inner workings are known exactly. The looped transformers work went further: it set specific weights in a transformer and ran it in a loop so that it acted as a small general-purpose computer. Both show that networks can be *programmed* rather than trained. Both use a compiler or a mathematical construction to produce the weights. Here, no compiler exists. A model wrote each value directly and had to reason about it, which is exactly what the rules require. The looped transformers idea is close in spirit to the game loop used here, where the network's output is fed straight back in as its next input.
+**Learned neural game engines.** GameNGen ([Valevski et al., 2024](https://arxiv.org/abs/2408.14837)) simulates DOOM in real time with a diffusion model trained on recorded agent play, alongside earlier learned simulators such as World Models and GameGAN. These systems trade exactness for scale and fidelity on far richer games, and their authors describe the result as approximate. This project takes the opposite point in that design space: a small game, but bit-exact state transitions with no drift over arbitrarily long play, and parameters that can be inspected one at a time.
 
-**Learned game engines.** At the other extreme, systems such as GameNGen learn to *imitate* a game from recorded play. GameNGen runs DOOM, a far richer game than Tetris, interactively and in real time, entirely inside a trained diffusion model. Its impressive visual quality comes from training on a large number of recorded play sessions, and its authors describe the result as close to the original but not an exact simulation. That approach trades exactness for scale and visual richness. This project makes the opposite trade: a small game, but every rule is exact, every value is visible, and the game never drifts, because every cell is always exactly 0 or 1.
+**Positioning.** This is a hand-programmed, exact, weight-shared recurrent network that implements a complete interactive game. Its state is fully observable, and every parameter has a documented purpose.
 
-**Weight-space programming.** The blog post that started this describes a language model writing working network weights from a spec, including small game-playing networks. This project applies that method to a complete, interactive game with state, randomness, scoring and a human player.
+## 3. System overview
 
-**In one sentence:** this is a *hand-written*, *exact*, *convolutional* network that runs an entire interactive game as a loop, screen in and screen out, with every number explained.
+<p align="center"><img src="docs/img/loop.svg" alt="Game loop" width="760"></p>
 
-## 3. The big picture
+Formally, the network computes the transition function `s_{t+1} = f_θ(s_t, k_t, r_t)` of a discrete-time system, where:
 
-<p align="center"><img src="docs/img/loop.svg" alt="The game loop: screen and inputs go into the network, the next screen comes out and is fed back" width="760"></p>
+* `s_t ∈ {0,1}^{12×21×16}` is the screen (12 binary channels on a 21 × 16 grid);
+* `k_t ∈ {0,1}^4` is a one-hot (or all-zero) key vector (left, right, rotate, down);
+* `r_t ~ U[0,1)` is the random sample.
 
-Ten times a second, the same thing happens:
+The host calls `f_θ` at 10 Hz and feeds `s_{t+1}` back as the next input. The architecture has no hidden recurrent state: the screen *is* the state, so everything the game remembers is observable.
 
-1. The **current screen** goes into the network, along with which key (if any) was pressed and one random number.
-2. The network computes the **next screen**.
-3. The page draws that screen, then feeds it straight back in for the next step.
+## 4. Computational model
 
-The network has no hidden memory. Everything the game must remember is on the screen: where the stack is, where the falling piece is, what the next piece will be, the score, a timer for gravity, and whether the game is over. If it isn't on the screen, the game has forgotten it.
+### 4.1 Node types
 
-## 4. A neuron is a light switch with a dial
+The executor (`engine.js`) supports two node types. Both use the same activation.
 
-<p align="center"><img src="docs/img/gate.svg" alt="clamp01 and the AND gate" width="760"></p>
+* **Map node** (output in ℝ^{21×16}): `y = σ( Σ_i K_i ⋆ X_i + Σ_j w_j s_j + b )`, where `K_i ⋆ X_i` is a zero-padded, centered 2D cross-correlation of map input `X_i` with an `h_i × w_i` kernel, and each scalar input `s_j` is broadcast to all cells with weight `w_j`.
+* **Scalar node** (output in ℝ): `y = σ( Σ_i w_i · ΣX_i + Σ_j w_j s_j + b )`, where map inputs are reduced by a global sum.
 
-Every node in this network does the same small job:
+Map nodes provide translation-equivariant local rules. Scalar nodes provide global reductions (∃, counts) and gating signals, which are then broadcast back into map nodes. Together they express the global conditionals Tetris requires without any fully connected layers.
 
-1. Multiply each input by a **weight** and add them up.
-2. Add one more number, the **bias**.
-3. **Clamp** the result between 0 and 1: anything below 0 becomes 0, anything above 1 becomes 1.
+### 4.2 Activation
 
-On the screen, every cell is either 0 (empty) or 1 (filled). With whole-number weights, that simple recipe turns each node into an exact logic gate:
+<p align="center"><img src="docs/img/gate.svg" alt="clamp01 and threshold logic" width="760"></p>
 
-* **AND** ("both are on"): weights 1 and 1, bias -1. The sum only reaches 1 when both inputs are 1.
-* **OR** ("either is on"): weights 1 and 1, bias 0. The clamp stops the total at 1.
-* **NOT** ("is off"): weight -1, bias 1.
-* **"at least k of these"**: weights all 1, bias -(k-1).
+`σ(v) = clamp(v, 0, 1)`. All state is binary and all weights except the RNG thresholds are small integers, so every pre-activation is an integer. On integers, `σ` is an exact threshold gate:
 
-**Why this activation?** The common alternatives fail in specific ways. A plain ReLU (zero below, unlimited above) would let an OR of two 1s become 2, which would need extra layers to tidy up. A smooth sigmoid never reaches exactly 0 or 1, so tiny errors would pile up over thousands of steps until the game broke. The clamp keeps every value exactly 0 or 1 forever, so the game is as exact on step 10,000 as on step 1.
-
-## 5. The screen is the memory
-
-<p align="center"><img src="docs/img/layers.svg" alt="The twelve layers of the screen" width="760"></p>
-
-The screen is 21 rows by 16 columns. Think of it as **12 transparent sheets stacked on top of each other**, like the color layers of an image. Each sheet holds one kind of information, and every cell on every sheet is 0 or 1.
-
-| Sheet | Holds | Why it is a separate sheet |
+| Function | Weights | Bias |
 |---|---|---|
-| **W** | walls and floor | Collision checks treat walls like solid blocks, so there are no special cases at the edges. Keeping them apart from the stack stops walls from counting toward a full row. |
-| **L** | locked cells (the stack) | the pile you build |
-| **A** | the falling piece | It must move separately from the stack. |
-| **P** | the falling piece's pivot | Rotation needs a center point. |
-| **Q** | the preview (next) piece | A new piece is a straight copy of this. |
-| **R** | the preview piece's pivot | It is copied along with the preview. |
-| **S** | score bits | a 16-digit binary number |
-| **T** | the timer token | a ticking clock for gravity |
-| **G** | game over | When set, the whole sheet lights up. |
-| **MQ, MS, MT** | fixed markers | They tell the network *where* the preview box, score column and timer column are. |
+| AND of n inputs | 1, ..., 1 | −(n−1) |
+| OR | 1, ..., 1 | 0 |
+| NOT | −1 | 1 |
+| at least k of n | 1, ..., 1 | −(k−1) |
+| XOR(a, b) | `a + b − 2·AND(a,b)` | 0 (two layers) |
 
-The board is columns 0 to 11 (walls at 0 and 11, play area 1 to 10) and rows 0 to 19, with the floor on row 20. Columns 12 to 15 are the status area.
+**Rationale.** ReLU would let an OR exceed 1 and need a renormalizing layer. Sigmoid and tanh never produce exact 0/1, so error would compound across steps of the recurrence. `clamp01` keeps the state space exactly `{0,1}` indefinitely. That is a fixed-point argument: the reachable state set is closed under `f_θ`, so there is no drift no matter how long the game runs.
 
-## 6. Stencils: one rule, written once, used everywhere
+### 4.3 Weight sharing
 
-<p align="center"><img src="docs/img/stencil.svg" alt="A three-cell stencil sliding along a row shifts a piece left" width="760"></p>
+<p align="center"><img src="docs/img/stencil.svg" alt="Convolution as shift" width="760"></p>
 
-A rule of Tetris works the same at every spot on the board: "move this piece one cell left" means the same thing everywhere. So instead of writing the rule 336 times, once per cell, it is written **once** as a small grid of numbers called a **stencil** (a convolution kernel), and the framework slides it across every cell.
+Tetris rules are translation-invariant, so they are expressed as convolution kernels. A one-hot kernel is a shift operator: `[0 0 1]` gives `y(x) = X(x+1)`, a left shift. Shifts composed with pointwise logic give move, collision, rotation, spawn-copy and line-clear operations. Without weight sharing, each rule would need to be replicated across 336 cells, roughly 100 times more parameters. That would make manual authorship and inspection infeasible. Kernel window sizes are fixed in `graph.txt` (the architecture); the kernel values, including which offset is active, live entirely in the weight files.
 
-The animation shows the simplest stencil, `[0 0 1]`. At each cell it looks at itself and its two neighbors. It ignores the left one and itself (weights 0) and copies the right one (weight 1). The effect is that the whole piece shifts one cell left. Change it to `[1 0 0]` and the piece shifts right. Make it tall instead of wide and the piece moves down.
+## 5. State representation
 
-**Why use stencils?** Without them, the same rule would have to be repeated at every cell. That would mean roughly 100 times more numbers: far too many to write, read or check by hand. With them, the whole game fits in 1,035 numbers, and most files hold between 2 and 6.
+<p align="center"><img src="docs/img/layers.svg" alt="The twelve channels" width="760"></p>
 
-Some nodes need only a few global facts instead of a full sheet: "is anything blocked?", "is any row full?". Those are **scalar nodes**. A scalar node adds up an entire sheet into one number. Its single answer can then be fed back into every cell of a later sheet as an on/off switch.
-
-## 7. One step of the game, stage by stage
-
-<p align="center"><img src="docs/img/pipeline.svg" alt="The five stages of one network step" width="760"></p>
-
-Each step runs top to bottom through 87 nodes in five stages. The next section opens up every one of them.
-
-## 8. Every part of the network, explained
-
-Node names below match the files in `weights/` and the lines in `graph.txt`.
-
-### 8.0 Looking at the screen first
-
-Before deciding anything, five nodes summarize the incoming screen:
-
-| Node | Question it answers | How |
+| Channel | Semantics | Rationale |
 |---|---|---|
-| `g0` | Is the game already over? | Adds up the G sheet; any lit cell means yes. |
-| `aE` | Is there *no* falling piece? | NOT (sum of the A sheet). |
-| `F` | Is this cell part of a full row? | A sideways stencil of 19 ones counts the stack 9 cells either side; bias -9 means "all 10". |
-| `fF` | Is any row full? | Adds up F. |
-| `gt` | Is it time for gravity? | True when the timer token has run off the end of its column. |
+| `W` | walls and floor (static) | Collision becomes uniform overlap with `W ∨ L`; separating it from `L` keeps walls out of the row count. |
+| `L` | locked cells | the stack |
+| `A` | active piece | Transformed independently of `L`. |
+| `P` | active pivot | Rotation center; empty for O. |
+| `Q`, `R` | preview piece and pivot | Spawn reduces to a translation of `Q`, `R`. |
+| `S` | score, 16-bit binary | |
+| `T` | gravity timer token | |
+| `G` | game-over flag (broadcast to all cells) | |
+| `MQ`, `MS`, `MT` | static markers: preview anchor, score field, timer field | They let translation-equivariant kernels address specific screen regions. |
 
-`g0` matters everywhere. Every later action subtracts it, so once the game is over, nothing can move.
+Grid layout: columns 0 and 11 are walls, columns 1 to 10 are the playfield and row 20 is the floor. Columns 12 to 15 hold the status area: the preview box in rows 0 to 1, the score in column 13 (rows 4 to 19, MSB on top) and the timer in column 15 (rows 4 to 10). Static channels are reproduced by identity nodes, so `f_θ` emits the complete next state.
 
-### 8.1 Moving left and right, and running into things
+## 6. Network walkthrough
 
-<p align="center"><img src="docs/img/move.gif" alt="The piece moves left until it hits the wall, then right until it hits the other wall" width="260"></p>
+<p align="center"><img src="docs/img/pipeline.svg" alt="Five stages" width="760"></p>
 
-<p align="center"><img src="docs/img/collision.svg" alt="How a collision is detected" width="760"></p>
+The graph is a DAG of 87 nodes evaluated in topological order. The notation below uses `∧ ∨ ¬` for the gates of §4.2, `shift_d(X)` for a one-hot kernel, `Σ` for a global sum and `[·]` for the clamp.
 
-The network never asks "can I move?" in the abstract. It **tries** the move and looks for trouble:
+### 6.0 Global predicates
 
-1. `ovL` builds the piece shifted one cell left, using the stencil `[0 0 1]`. It ANDs each cell with "wall OR stack" (bias -1). Any lit cell in `ovL` is an overlap.
-2. `okL` sums `ovL` over the whole board: **ok to move left = NOT (any overlap)**.
-3. `mL` = left key AND `okL` AND NOT game over. That is three conditions, so the weights are 1, 1 and -1 with bias -1.
-4. `ovR`, `okR` and `mR` do the same for moving right.
+| Node | Definition | Meaning |
+|---|---|---|
+| `g0` | `[ΣG]` | the game is over |
+| `aE` | `[1 − ΣA]` | no active piece |
+| `F` | `[(1_{1×19} ⋆ L) − 9]` | cell lies in a full row |
+| `fF` | `[ΣF]` | some row is full |
+| `gt` | `[1 − ΣT]` | gravity tick (timer token has exited its field) |
 
-In the animation the piece slides to the left wall and stops: the next left move would overlap the wall, so `okL` becomes 0. Then it slides to the right wall and stops there too.
+`F`'s 19-wide all-ones kernel counts locked cells within ±9 columns. Only the 10 interior cells of a full row reach 10, and wall and status columns see at most 9. `g0` enters every later action gate with a negative weight, so after top-out the transition function becomes the identity on all gameplay channels.
 
-### 8.2 Rotation
+### 6.1 Translation and collision
 
-<p align="center"><img src="docs/img/rotation.svg" alt="How rotation works" width="760"></p>
+<p align="center"><img src="docs/img/move.gif" alt="Lateral movement against walls" width="260"></p>
+<p align="center"><img src="docs/img/collision.svg" alt="Collision detection" width="760"></p>
 
+Moves are evaluated speculatively:
+
+* `ovL = shift_{+1}(A) ∧ (W ∨ L)`, the overlap map for a left move (`ovR` uses `shift_{−1}`)
+* `okL = ¬∃ ovL`, computed as `[1 − Σ ovL]`
+* `mL = kL ∧ okL ∧ ¬g0`, with weights (1, 1, −1) and bias −1
+
+The same pattern recurs throughout: generate the candidate by shifting, intersect it with obstacles, reduce with ∃, gate on the result.
+
+### 6.2 Rotation
+
+<p align="center"><img src="docs/img/rotation.svg" alt="Rotation mechanism" width="760"></p>
 <p align="center">
-<img src="docs/img/rotate_T.gif" alt="T piece rotating through all four positions" width="260">
-<img src="docs/img/rotate_I.gif" alt="I piece rotating, and a rotation refused at the wall" width="260">
+<img src="docs/img/rotate_T.gif" alt="T rotation" width="260">
+<img src="docs/img/rotate_I.gif" alt="I rotation and refusal at wall" width="260">
 </p>
 
-Rotation is the cleverest part. Each piece has a **pivot** cell, marked on the P sheet, that stays put while the other cells swing a quarter turn clockwise around it. On the screen (where down is positive), "one to the right" becomes "one below", "one below" becomes "one to the left", and so on.
+Clockwise rotation in screen coordinates (y down) is `R(dx, dy) = (−dy, dx)`. For each offset `d` in the support set `D`, a detector node fires at cell `x` when the pivot is at `x − Rd` and a piece cell is at `x − Rd + d`:
 
-Twelve detector nodes, `U1` to `U12`, each handle one possible offset from the pivot. Each one asks a two-part question at every cell: *"Is the pivot where it would need to be, AND is there a piece cell at the spot that would swing onto me?"* That is an AND of two one-hot stencils with bias -1. If the answer is yes, this cell belongs to the turned piece.
+```
+U_d(x) = P(x − Rd) ∧ A(x − Rd + d)
+```
 
-| Detectors | Offsets covered | Who needs them |
-|---|---|---|
-| `U1`..`U4` | directly beside the pivot (right, below, left, above) | every piece except O |
-| `U5`..`U8` | diagonal from the pivot | S, Z, J, L, and T when turned |
-| `U9`..`U12` | two cells away in a straight line | only the long I piece |
+Each `U_d` is an AND of two one-hot kernels (pivot at `−Rd`, piece at `d − Rd`) with bias −1. The result lands directly at the rotated position, so no second placement layer is needed.
 
-`AU` combines the pivot cell with all twelve detectors to form the turned piece. Then the same "try it and check" idea applies. `ovU` looks for overlaps, and `okU` allows the turn only if the turned piece **still has all 4 cells AND overlaps nothing**. The "4 cells" test refuses a turn that would push a cell off the top of the screen. It also handles the O piece with no special code: O has no pivot, so its turned version is empty and is always refused.
+| Nodes | Offsets `d` | Kernel windows | Used by |
+|---|---|---|---|
+| `U1` to `U4` | (±1,0), (0,±1) | 3×3, 3×3 | all but O |
+| `U5` to `U8` | (±1,±1) | 3×3 (P), 5×5 (A) | S, Z, J, L, T |
+| `U9` to `U12` | (±2,0), (0,±2) | 5×5, 5×5 | I only |
 
-In the I animation, the last turn is refused because the piece is against the right wall and turning it would push cells into the wall.
+The pivots were chosen so that `|D| = 12` covers all pieces in all orientations. The per-node kernel coordinates are tabulated in `DESIGN.md`.
 
-**Combining the player's move:** `A1L`, `A1R`, `A1U` and `A1S` each switch one candidate piece on or off (shifted left, shifted right, turned, or unchanged), and `A1` ORs them. Exactly one switch is on, because the framework sends at most one key per step and `st1` ("no move happened") is 1 only when no move was made. The pivot follows the same path through `P1L`, `P1R`, `P1S` and `P1`. A rotation leaves the pivot where it is.
+The rotated piece and its legality test:
 
-### 8.3 Gravity, dropping and locking
+* `AU = P ∨ ⋁_d U_d` (the pivot maps to itself)
+* `ovU = AU ∧ (W ∨ L)`
+* `okU = [ΣAU − 3 − 10·ΣovU]`, which is 1 iff the rotated piece has exactly 4 cells and no overlap
+
+The cardinality term rejects rotations that lose cells across the top boundary, where zero padding drops them. It also rejects O without any special case: O carries no pivot, so `AU = ∅`.
+
+Composition of the stage-1 result: `A1 = (shift_{+1}A ∧ mL) ∨ (shift_{−1}A ∧ mR) ∨ (AU ∧ mU) ∨ (A ∧ st1)`, with `st1 = ¬(mL ∨ mR ∨ mU)`. The gates are mutually exclusive because the host delivers at most one key per step. Each `∧ m` term is a separate node (`A1L`, `A1R`, `A1U`, `A1S`), because a single threshold cannot compute a sum of products. The pivot follows the same path through `P1L`, `P1R`, `P1S` and `P1`; rotation leaves `P` fixed.
+
+### 6.3 Gravity and locking
 
 <p align="center">
-<img src="docs/img/drop_lock.gif" alt="A piece drops, locks into the stack, and the next piece spawns" width="260">
-<img src="docs/img/timer.gif" alt="The timer token ticking down its column" width="260">
+<img src="docs/img/drop_lock.gif" alt="Drop, lock and respawn" width="260">
+<img src="docs/img/timer.gif" alt="Timer token" width="260">
 </p>
 
-**The clock.** Pieces fall on their own every 0.8 seconds. Since the network has no hidden memory, the clock has to be on the screen: a single green **token** walks down a 7-cell column, one cell per step (right-hand animation).
+**Timer.** The timer is a one-hot token that walks down a 7-cell field:
 
-* `TS` moves the token down one cell and keeps it inside its column using the MT marker, so it falls off after the last cell.
-* When the column is empty, `gt` says "gravity now". `TI` then places a new token at the top of the column. It finds the top by looking for "column here AND no column above".
-* `Tnew` combines the two. One full cycle is 8 steps, which is 0.8 seconds at 10 steps per second.
+* `TS = shift_{down}(T) ∧ MT` advances the token; it drops out after the last cell.
+* `TI = (MT ∧ ¬shift_{down}MT) ∧ gt` re-inserts it at the field's first cell. The kernel `[−1, 1, 0]ᵀ` detects that edge.
 
-**Falling or locking.**
+The period is 8 steps, or 0.8 s at 10 Hz. Timing is a game rule, so it is kept in-network rather than supplied by the host.
 
-* `ovD` tries the piece one row lower (a tall stencil reading the cell above) and checks it against "wall OR stack". `okD` = NOT any overlap.
-* `g` = (gravity tick OR down key) AND NOT game over. The weight on game over is -2, so it cancels even when both inputs are on.
-* `mD` = g AND okD: fall one row.
-* `lock` = g AND NOT okD: the piece can't go lower, so it locks into the stack.
-* `st2` = neither one happened.
-* `A2D`, `A2S`, `P2D` and `P2S` produce the fallen or unchanged piece and pivot. A locking piece goes into neither, so it disappears from the falling sheet...
-* ...and reappears in the stack: `LK` = piece AND lock adds its cells to L.
+**Fall and lock.**
 
-### 8.4 Clearing full lines
+* `ovD = shift_{down}(A1) ∧ (W ∨ L)` and `okD = ¬∃ovD`
+* `g = (gt ∨ kD) ∧ ¬g0`, as `[gt + kD − 2·g0]`
+* `mD = g ∧ okD`, `lock = g ∧ ¬okD`, `st2 = ¬(mD ∨ lock)`
+* `A2 = (shift_{down}A1 ∧ mD) ∨ (A1 ∧ st2)`; a locking piece leaves `A`...
+* ...and enters `L` through `LK = A1 ∧ lock`.
 
-<p align="center"><img src="docs/img/rowfull.svg" alt="How full rows are found and cleared" width="760"></p>
+### 6.4 Line clear
 
-<p align="center"><img src="docs/img/line_clear.gif" alt="Four lines clear one per step while the score counts up" width="260"></p>
+<p align="center"><img src="docs/img/rowfull.svg" alt="Row detection and clear" width="760"></p>
+<p align="center"><img src="docs/img/line_clear.gif" alt="Four-line clear" width="260"></p>
 
-* `F` (from 8.0) lights every cell of a full row.
-* `C` uses a tall stencil (20 ones looking downward) to mark every cell that has a full row at or below it. Those are the cells that must move down.
-* `LKeep` = stack AND NOT marked: these cells stay where they are.
-* `LSh` = the cell above AND marked: these cells take on whatever was directly above them.
-* `Lnew` = `LKeep` OR `LSh` OR `LK`.
+* `C = [K_{39×1} ⋆ F]`, where the kernel is 1 for offsets 0..+19. It marks cells at or above a full row.
+* `L' = (L ∧ ¬C) ∨ (shift_{down}L ∧ C) ∨ LK`
 
-**One row per step.** If several rows are full, everything above the lowest one drops by one row, and on the next step the next full row is handled. The animation shows four lines clearing on four consecutive steps. This keeps the network small, because a single stencil can't shift things by a variable amount. It also makes scoring exact, since exactly one line is cleared per step. To stay safe, no new piece appears until every full row is gone.
+Each step clears one row: all cells above the lowest full row drop by one, and later full rows are handled on later steps. A fixed kernel cannot implement a data-dependent shift distance, and this sequencing avoids the need for one. It also makes the score increment exactly 1 per step that `fF` is set. Spawning is gated on `¬fF`, so no active piece coexists with a pending clear.
 
-### 8.5 The score
+### 6.5 Score
 
-<p align="center"><img src="docs/img/counter.svg" alt="The binary score counter" width="760"></p>
+<p align="center"><img src="docs/img/counter.svg" alt="Binary counter" width="760"></p>
 
-The score counts cleared lines in **binary**, shown as the column of 16 cells next to the board (top is the high digit, bottom is the low digit). Adding 1 to a binary number means "flip digits from the bottom up until you flip a 0 to 1". Three nodes do that:
+The score is a 16-bit ripple incrementer, evaluated in parallel:
 
-* `carry`: a digit flips if a line is being cleared (`fF`) AND every digit below it is already 1. A tall stencil checks all the lower digits at once. Each one contributes "digit minus field", which is 0 when the digit is 1 and -1 when it is 0, so the sum is 0 only when all of them are 1.
-* `SC` = digit AND carry.
-* `Snew` = digit + carry - 2 x `SC`. That is "exclusive or": the result is 1 when exactly one of them is 1.
+* `carry_i = fF ∧ MS_i ∧ ⋀_{j<i} S_j`. It is computed as `[fF + MS_i − 1 + Σ_{j<i}(S_j − MS_j)]`, where the sum over lower bits is 0 iff all of them are 1. A 31×1 kernel covers every lower bit.
+* `SC = S ∧ carry`
+* `S' = S + carry − 2·SC`, i.e. `S ⊕ carry`
 
-### 8.6 New pieces: the preview and the random choice
+### 6.6 Spawn and piece selection
 
-<p align="center"><img src="docs/img/spawn.gif" alt="The first preview is drawn, then copied into the board while a new preview is chosen" width="260"></p>
+<p align="center"><img src="docs/img/spawn.gif" alt="Spawn from preview" width="260"></p>
+<p align="center"><img src="docs/img/random.svg" alt="RNG to one-hot" width="760"></p>
 
-<p align="center"><img src="docs/img/random.svg" alt="Turning a random number into one of seven pieces" width="760"></p>
+* **Spawn condition:** `e = aE ∧ ¬fF ∧ ¬g0`.
+* **Spawn by translation:** `ASp = shift_{+8}(Q) ∧ e`, using a 1×17 kernel with its single 1 at the right edge (and the same for `PSp` on `R`). The preview box sits exactly 8 columns right of the spawn point.
+* **Next state:** `Anew = A2 ∨ ASp` and `Pnew = P2 ∨ PSp`.
+* **Thresholds:** `h_k = [7·10⁹ · r − k·10⁹]` approximates the step function `1[r ≥ k/7]`. The undefined band has width about 1.4·10⁻¹⁰, which is negligible.
+* **One-hot selection:** `D_t = MQ ∧ h_t ∧ ¬h_{t+1} ∧ e`, with `h_0 ≡ 1` and `h_7 ≡ 0` folded into the biases. It lights exactly the anchor cell for exactly one piece, and only on spawn steps.
+* **Preview render:** `Q' = (Q ∧ ¬e) ∨ Σ_t (K_t ⋆ D_t)`. `K_t` is the 5×5 shape of piece `t`, point-reflected: cross-correlation reads `X(x+k)`, so stamping a cell at offset `c` needs the weight at `−c`.
+* **Preview pivot:** `R' = (R ∧ ¬e) ∨ ⋁_{t≠O} D_t`.
 
-**When to spawn.** `e` = no falling piece AND no full row AND NOT game over.
-
-**Spawning is a copy.** The preview box sits 8 columns to the right of the spawn spot. `ASp` and `PSp` use a 17-wide stencil whose only 1 sits at the far right, so it reads 8 columns over. That copies the preview piece and its pivot into the board. `Anew` and `Pnew` then combine the new piece with whatever happened in the earlier stages.
-
-**Choosing the next preview.**
-
-* `h1`..`h6` are threshold nodes: "is the random number at least 1/7? 2/7? ... 6/7?". They use a very steep slope (weight 7,000,000,000) so their answer is always a clean 0 or 1.
-* `D0`..`D6`: piece *k* is chosen when threshold *k* is yes and threshold *k+1* is no. Each `D` node also requires "a spawn is happening" AND "this is the preview anchor cell", so it lights exactly one cell, and only at the right moment.
-* `Qnew` stamps the chosen piece's shape into the preview box using a 5x5 stencil per piece. The stencils are mirror images of the shapes, because a stencil *reads* from offsets. Copying a cell to an offset means putting the 1 at the opposite offset.
-* `QK` and `RK` keep the old preview when nothing spawns. `Rnew` places the preview pivot for every piece except O.
-
-**The seven pieces and their pivots** (pivot marked P):
+Spawn orientations and pivots (`P`):
 
 ```
 I  .....      O  .XX.      T  .X.       S  .XX       Z  XX.       J  X..       L  ..X
    XPXX          .XX.         XPX          XP.          .PX          XPX          XPX
 ```
 
-The pivots were chosen so that every cell of every rotation stays within two steps of the pivot. That keeps the number of rotation detectors at exactly 12.
+### 6.7 Game over
 
-### 8.7 Game over
+* `ovS = shift_{+8}(Q) ∧ L ∧ e`
+* `ge = ∃ovS`
+* `G' = g0 ∨ ge`, broadcast to every cell
 
-<p align="center"><img src="docs/img/game_over.gif" alt="The stack reaches the top; the new piece overlaps and the game freezes" width="260"></p>
+The overlapping piece is still written into `A`, and the renderer shows the overlap in red. With `g0 = 1`, every action gate is zero and the dynamics freeze.
 
-* `ovS` checks whether the piece about to be copied in overlaps the stack, but only on a spawn step (bias -2 for a three-way AND).
-* `ge` = any overlap. `Gnew` = old game over OR new game over, lit across the whole sheet.
+### 6.8 Static channels
 
-The overlapping piece is still drawn, in red, so the player sees what topped out. From then on `g0` is 1, which switches off every move, every fall and every spawn, and the game freezes.
+`Wc`, `MQc`, `MSc` and `MTc` are identities (weight 1, bias 0), so the host never has to carry state forward.
 
-### 8.8 Keeping the fixtures
+**Network statistics:** 87 nodes and 1,035 parameters with 14 distinct values: {0, 1, −1, −2, −3, −9, −10, 7·10⁹, −1·10⁹, ..., −6·10⁹}. Most nodes have 2 to 6 parameters. The largest are the long reduction and shift kernels (`F` 19, `C` 39, `carry` 62, spawn copies 17 each) and `Qnew` (7 × 25). A per-file index is in [`DESIGN.md`](DESIGN.md).
 
-`Wc`, `MQc`, `MSc` and `MTc` simply copy the walls and the three markers (weight 1, bias 0). This way the network, not the framework, produces the *entire* next screen.
+## 7. Host framework
 
-## 9. The code around the network
-
-The surrounding code is deliberately small and contains no Tetris rules. [`AUDIT.md`](AUDIT.md) goes through it piece by piece.
-
-| File | What it does |
+| File | Role |
 |---|---|
-| `graph.txt` | The wiring diagram: for each node, its type, its inputs and the size of each stencil. It holds no numbers that decide behavior. |
-| `weights/*.txt` | One file per node: the stencil values in input order, then the bias. Only numbers. |
-| `engine.js` | The generic executor, about 150 lines. It knows only "slide a stencil", "add up a sheet", "add a switch value to every cell" and "clamp". It never looks at what a cell means. |
-| `play.template.html` → `play.html` | The browser page. Every 100 ms it takes one key from a short queue, adds a random number, runs the network and paints the sheets in colors. `build.js` pastes the engine and every text file into `play.html` unchanged, so the game is one self-contained file. |
-| `sim.js`, `play.js` | Debugging tools. They run the network on a list of keys and print the screens as text, so behavior can be watched step by step. |
-| `screen0.txt` | The starting screen, drawn with characters: walls, floor and the three markers. |
+| `graph.txt` | Architecture: node type, input wiring and kernel window sizes. It holds no parameter values. |
+| `weights/<node>.txt` | Parameters: kernels in input order, then the bias. Pure numeric text. |
+| `engine.js` | Generic executor (~150 LOC): cross-correlation, global sum, broadcast, clamp. It has no data-dependent branching. |
+| `play.template.html` / `play.html` | Browser host: key queue (depth ≤ 2, one key per step), RNG sample, 10 Hz tick, per-channel rendering. `build.js` inlines all text files verbatim into a single self-contained `play.html`. |
+| `sim.js`, `play.js` | Debug harnesses: scripted forward passes with seeded RNG and text rendering; `play.js` persists state between invocations so a game can be played one decision at a time. |
+| `screen0.txt` | Initial state (walls and static markers), as a character map. |
 
-## 10. The decisions, and why they were made
+[`AUDIT.md`](AUDIT.md) reviews every component and confirms the host contains no game logic. The renderer reads channels only to color them and never feeds anything back.
 
-| Decision | Alternatives | Why this one |
+## 8. Design decisions
+
+| Decision | Alternative considered | Reason |
 |---|---|---|
-| Screen in, screen out, with no hidden memory | Keep a hidden state vector | This was the agreed rule. It also makes the network fully inspectable: everything it "knows" is visible. |
-| 12 binary sheets | One sheet with codes (0 empty, 1 locked, 2 falling...) | Decoding codes would need extra layers. Separate on/off sheets make every rule a simple AND/OR. |
-| Walls as their own sheet | Treat the screen edge as a wall | No special edge cases in collisions, and walls never count toward full rows. |
-| One activation, clamp01 | ReLU, sigmoid, step | Exact logic on whole numbers; values stay exactly 0 or 1 forever (section 4). |
-| Stencils (weight sharing) | Fully connected layers | One rule is written once instead of 336 times, which made writing and reading by hand possible. |
-| "Try the move, then check for overlap" | Compute legal moves directly | A shifted copy plus one overlap test is the simplest exact collision check. |
-| Rotation about a pivot cell | Lookup tables for each piece and orientation | 12 small detectors handle all seven pieces in all four orientations. |
-| O piece has no pivot | Special-case code for O | The general "must still have 4 cells" rule refuses it for free. |
-| I rotates about one of its own cells | Modern rotation rules with wall kicks | Kicks would need many more nodes. Classic NES Tetris also turns the I about a cell. |
-| Spawn by copying the preview | Draw each new piece from scratch | The preview already shows the shape, so one copy stencil does the job. |
-| One line cleared per step | Clear all full rows at once | A fixed stencil can't shift by a variable amount. This also makes the line count exact. |
-| Gravity clock as a token on the screen | Have the framework send a "gravity" signal | Timing is a game rule, so it belongs in the network. |
-| Score counts lines, in binary | Classic points (100/300/500/800) | With one line per step the network never sees a "4-line clear" at once. Binary fits 65,535 lines in 16 cells. |
-| At most one key per step | Allow simultaneous keys | No conflicts between moves, so the selection logic stays simple. |
+| Observable screen-as-state | Hidden recurrent state | Required by the spec; also makes the system fully inspectable. |
+| 12 binary channels | One categorical channel | Categorical decoding would cost extra layers; binary channels turn every rule into threshold logic. |
+| Separate `W` channel | Treat padding as wall | Uniform collision test, and walls are excluded from the row count. |
+| `clamp01` everywhere | ReLU / sigmoid / step | Exact gates on integer pre-activations; closed under recurrence (§4.2). |
+| Convolutional weight sharing | Dense layers | ~100× fewer parameters; rules are written once. |
+| Speculative shift + overlap test | Explicit legal-move computation | Minimal exact collision check that reuses one pattern. |
+| Pivot-cell rotation with 12 detectors | Per-piece, per-orientation tables | One mechanism covers all pieces; O falls out of the cardinality check. |
+| Classic rotation (I about a cell) | SRS with wall kicks | Kicks need many more nodes; this matches NES behavior. |
+| Spawn by translating the preview | Render each spawn from scratch | One copy kernel. |
+| One line per step | Simultaneous multi-line clear | Fixed kernels cannot do data-dependent shifts; exact line counting comes for free. |
+| In-network gravity timer | Host-supplied tick | Timing is game logic. |
+| Binary line counter | Classic point table | Multi-line clears are never observed atomically; binary fits 65,535 in 16 cells. |
+| One key per step | Simultaneous keys | Mutually exclusive gates keep selection simple. |
 
-## 11. How it was built, checked and debugged
+## 9. Verification
 
-**Building.** The design came first: the sheets, the stages and the logic for each node, worked out in reasoning. Then every weight file was typed by hand, one at a time. Only 14 distinct values appear in the entire network: 0, 1, -1, -2, -3, -9, -10, and the seven numbers in the random-number thresholds (7,000,000,000 and -1,000,000,000 through -6,000,000,000).
+All checks used forward passes with the outputs inspected visually. No tooling read the weights.
 
-**Checking.** The game was run with `sim.js` and the printed screens were read by eye:
+* **Movement and collision:** both walls block lateral moves; soft drop, locking and respawn behave correctly.
+* **Rotation:** T and I cycle through all four orientations, and an I rotation into the right wall is refused.
+* **Per-piece clear and score:** for each tetromino, `tests/clear_<piece>.txt` has a bottom row that is full except for that piece's footprint. In every case the piece moves, drops, completes the row, the row clears, the residual cells shift down and the score goes from 0 to 1.
+* **Multi-line clear:** four rows clear on four consecutive steps, and the score counts in binary.
+* **RNG coverage:** sampling `r` at each bin center produces I, O, T, S, Z, J and L.
+* **End-to-end:** a complete game was played decision by decision with `play.js` (seed 42): 512 steps from an empty board to top-out, all seven pieces placed, one line cleared. The key trace is in `tests/full_game_seed42.txt`, and the final `play.html` replays it headless to the identical terminal state.
 
-* moving into both walls stops the piece; dropping, locking and new pieces work;
-* T and I rotate through all four positions, and a rotation into a wall is refused;
-* for **each** of the seven pieces, a hand-drawn test screen has a bottom row full except for exactly that piece's shape. Each piece was moved, dropped, filled the gap, cleared the line and raised the score from 0 to 1 (`tests/clear_*.txt`);
-* four lines clear on four consecutive steps, with the score counting in binary;
-* sweeping the random number across all seven ranges produces I, O, T, S, Z, J and L;
-* a **complete game** was played one decision at a time with `play.js`, choosing each move from the printed screen. It ran 512 steps, from an empty board to game over, used all seven pieces and cleared a line. The full key record is `tests/full_game_seed42.txt`, and the final `play.html` replays it to the same ending.
+The parameters were correct on the first execution. The only defects found were in the host (a module export bug), in a test fixture (a piece drawn over a wall) and in one misreading of filtered output during the play-through, which single-step replay resolved. No parameter edits were needed.
 
-**Debugging.** The weights behaved as designed on the first run. The bugs that appeared were outside the network. The engine's export line didn't work in Node (a framework fix). A test screen had a piece accidentally drawn over a wall (a test-file fix). Once, during the play-through, a text filter hid the rows where a piece was falling, which made the network look as if it had spawned the wrong piece. Stepping through one tick at a time showed the network was right and the reading was wrong. No weight needed changing. Had one been wrong, the rule was clear: find the cause by reading the numbers, and fix it by editing the file.
+## 10. Limitations
 
-## 12. Limits and honest caveats
+* Scoring counts lines rather than using the classic 100/300/500/800 point table.
+* There is no hard drop, no hold and no lock delay.
+* Rotation uses classic pivot rotation, not SRS with wall kicks.
+* Pieces are drawn i.i.d. uniform; there is no 7-bag.
+* Gravity speed is fixed; there are no levels.
 
-* **Scoring** counts lines, not the classic point values.
-* **No hard drop** and no "hold piece". Only soft drop is wired up.
-* **Rotation** follows the classic style, not the modern rotation system with wall kicks.
-* **The piece order** is fully random, with no "bag" that guarantees all seven appear in every set of seven.
-* **Speed** stays constant; there are no levels.
-* Every one of these could be added the same way: by writing more nodes and weights by hand.
+Each of these is expressible in the same model by adding more nodes.
 
-## 13. Files and how to run things
+## 11. Repository layout and usage
 
 ```
-README.md            this explainer
-GOAL.md              the original goal statement
-DESIGN.md            technical design note, with a table for every weight file
-AUDIT.md             line-by-line audit of the framework code
-graph.txt            network wiring (no values)
-weights/             87 hand-written weight files (1,035 numbers)
-screen0.txt          starting screen
-engine.js            generic network executor
-play.template.html   browser page source; build.js turns it into play.html
-play.html            the playable game (open this)
-sim.js, play.js      forward-pass debugging tools
-tests/               test screens and the recorded full game
-docs/img/            the diagrams and animations in this README
-docs/make_gifs.py    records the animations from real network output
+README.md            this document
+GOAL.md              original specification
+DESIGN.md            design note with per-file parameter index
+AUDIT.md             host framework audit
+graph.txt            architecture
+weights/             87 parameter files
+screen0.txt          initial state
+engine.js            executor
+play.template.html   host page source
+play.html            built, self-contained game
+build.js             inlines sources into play.html
+sim.js, play.js      forward-pass harnesses
+tests/               fixtures and the recorded full game
+docs/img/            figures and recorded animations
+docs/make_gifs.py    renders animations from forward-pass output
 ```
 
-* **Play:** open `play.html`.
-* **Rebuild the page after editing a weight file:** `node build.js`
-* **Watch a scripted run as text:** `node sim.js screen0.txt "..lllrrrdddd" 1 1`
-* **Replay the recorded game:** `node sim.js screen0.txt "$(cat tests/full_game_seed42.txt)" 42 1`
-* **Re-record the animations:** `python3 docs/make_gifs.py` (needs Pillow). Every frame is a screen the network produced; the script only paints them.
+```sh
+node build.js                                                       # rebuild play.html after editing weights
+node sim.js screen0.txt "..lllrrrdddd" 1 1                          # scripted run, text output
+node sim.js screen0.txt "$(cat tests/full_game_seed42.txt)" 42 1    # replay the recorded game
+python3 docs/make_gifs.py                                           # re-record animations (requires Pillow)
+```
 
 ### References
 
-* Weight-space programming: https://rikiyat.github.io/blog/weight-space-programming/
-* Springer and Kenyon, *It's Hard for Neural Networks to Learn the Game of Life* (2020): https://arxiv.org/abs/2009.01398
-* Lindner et al., *Tracr: Compiled Transformers as a Laboratory for Interpretability* (2023): https://arxiv.org/abs/2301.05062
-* Giannou et al., *Looped Transformers as Programmable Computers* (ICML 2023): https://proceedings.mlr.press/v202/giannou23a.html
-* Valevski et al., *Diffusion Models Are Real-Time Game Engines* (GameNGen, 2024): https://arxiv.org/abs/2408.14837
-* McCulloch and Pitts, *A Logical Calculus of the Ideas Immanent in Nervous Activity* (1943), the origin of the neuron-as-logic-gate idea.
+* *Weight-Space Programming* (blog post). https://rikiyat.github.io/blog/weight-space-programming/
+* W. S. McCulloch and W. Pitts, "A Logical Calculus of the Ideas Immanent in Nervous Activity," *Bulletin of Mathematical Biophysics*, 1943.
+* J. M. Springer and G. T. Kenyon, "It's Hard for Neural Networks to Learn the Game of Life," 2020. https://arxiv.org/abs/2009.01398
+* D. Lindner et al., "Tracr: Compiled Transformers as a Laboratory for Interpretability," 2023. https://arxiv.org/abs/2301.05062
+* A. Giannou et al., "Looped Transformers as Programmable Computers," ICML 2023. https://proceedings.mlr.press/v202/giannou23a.html
+* D. Valevski et al., "Diffusion Models Are Real-Time Game Engines," 2024. https://arxiv.org/abs/2408.14837
