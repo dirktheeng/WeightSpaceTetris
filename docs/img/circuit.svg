@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="300" rx="14" fill="#14161b"/>
+  <text x="380" y="30" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">A map node is a sheet of identical gates; a scalar node is a wired-OR</text>
+  <g transform="translate(40,56)">
+    <g fill="#1d2027" stroke="#2a2e38">
+      <rect x="0" y="0" width="200" height="200"/>
+    </g>
+    <g fill="#f2a541" opacity=".85">
+      <path d="M12,12 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M52,12 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M92,12 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M132,12 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M172,12 h16 a8,8 0 0 1 0,16 h-16z"/>
+      <path d="M12,52 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M52,52 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M92,52 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M132,52 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M172,52 h16 a8,8 0 0 1 0,16 h-16z"/>
+      <path d="M12,92 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M52,92 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M92,92 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M132,92 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M172,92 h16 a8,8 0 0 1 0,16 h-16z"/>
+      <path d="M12,132 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M52,132 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M92,132 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M132,132 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M172,132 h16 a8,8 0 0 1 0,16 h-16z"/>
+      <path d="M12,172 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M52,172 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M92,172 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M132,172 h16 a8,8 0 0 1 0,16 h-16z"/><path d="M172,172 h16 a8,8 0 0 1 0,16 h-16z"/>
+    </g>
+    <text x="100" y="226" fill="#8b90a0" font-size="13" text-anchor="middle">336 copies of one AND gate,</text>
+    <text x="100" y="242" fill="#8b90a0" font-size="13" text-anchor="middle">each wired to its own neighbors</text>
+  </g>
+  <g transform="translate(300,70)" font-size="14" fill="#e7e9ee">
+    <text x="0" y="0">Like a cellular array or an FPGA fabric with one</text>
+    <text x="0" y="20">configuration: the kernel is the gate's wiring</text>
+    <text x="0" y="40">pattern, copied to every cell.</text>
+    <text x="0" y="80">A scalar node sums a whole sheet: a wide OR</text>
+    <text x="0" y="100">(or a counter) over all 336 cells, whose single</text>
+    <text x="0" y="120">output is then fanned back out to every cell as</text>
+    <text x="0" y="140">an enable line.</text>
+    <text x="0" y="180" fill="#8b90a0">The screen fed back between ticks plays the role</text>
+    <text x="0" y="200" fill="#8b90a0">of the registers; one tick is one clock cycle.</text>
+  </g>
+</svg>

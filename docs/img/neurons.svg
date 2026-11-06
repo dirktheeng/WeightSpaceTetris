@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="520" rx="14" fill="#14161b"/>
+  <text x="380" y="30" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Six real nodes, copied from their weight files</text>
+  <g font-size="13">
+    <!-- card 1: mL -->
+    <g transform="translate(24,50)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#f2a541"/>
+      <text x="12" y="22" fill="#f2a541" font-weight="bold">mL   (scalar)</text>
+      <text x="12" y="44" fill="#8b90a0" font-family="Menlo, monospace">weights/mL.txt: 1 1 -1 -1</text>
+      <text x="12" y="68" fill="#e7e9ee">kL x 1 + okL x 1 + g0 x (-1) - 1</text>
+      <text x="12" y="92" fill="#e7e9ee">= 1 only if left key AND</text>
+      <text x="12" y="110" fill="#e7e9ee">left is free AND not game over</text>
+      <text x="12" y="130" fill="#7fd18b">3-input gate with a veto</text>
+    </g>
+    <!-- card 2: F -->
+    <g transform="translate(265,50)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#5b8def"/>
+      <text x="12" y="22" fill="#5b8def" font-weight="bold">F   (map, kernel 1 x 19)</text>
+      <text x="12" y="44" fill="#8b90a0" font-family="Menlo, monospace">1 1 1 ... 1 (x19)   bias -9</text>
+      <text x="12" y="68" fill="#e7e9ee">counts locked cells within 9</text>
+      <text x="12" y="86" fill="#e7e9ee">columns either side; needs 10</text>
+      <text x="12" y="110" fill="#e7e9ee">to reach 1 after the -9</text>
+      <text x="12" y="130" fill="#7fd18b">"this row is full"</text>
+    </g>
+    <!-- card 3: U1 -->
+    <g transform="translate(506,50)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#f2a541"/>
+      <text x="12" y="22" fill="#f2a541" font-weight="bold">U1   (map, two 3x3 kernels)</text>
+      <g font-family="Menlo, monospace" fill="#e7e9ee">
+        <text x="12" y="46">P:</text><text x="36" y="46">0 1 0</text><text x="110" y="46">A:</text><text x="134" y="46">0 0 1</text>
+        <text x="36" y="62">0 0 0</text><text x="134" y="62">0 0 0</text>
+        <text x="36" y="78">0 0 0</text><text x="134" y="78">0 0 0</text>
+      </g>
+      <text x="12" y="98" fill="#8b90a0" font-family="Menlo, monospace">bias -1</text>
+      <text x="12" y="116" fill="#e7e9ee">pivot above me AND piece up-right</text>
+      <text x="12" y="132" fill="#7fd18b">rotates the "right" cell to "below"</text>
+    </g>
+    <!-- card 4: okU -->
+    <g transform="translate(24,206)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#f2a541"/>
+      <text x="12" y="22" fill="#f2a541" font-weight="bold">okU   (scalar)</text>
+      <text x="12" y="44" fill="#8b90a0" font-family="Menlo, monospace">weights/okU.txt: 1 -10 -3</text>
+      <text x="12" y="68" fill="#e7e9ee">cells(AU) - 10 x overlaps - 3</text>
+      <text x="12" y="92" fill="#e7e9ee">4 cells, 0 overlaps: 1 (allowed)</text>
+      <text x="12" y="110" fill="#e7e9ee">3 cells, or any overlap: 0</text>
+      <text x="12" y="130" fill="#7fd18b">count test + veto in one node</text>
+    </g>
+    <!-- card 5: h3 -->
+    <g transform="translate(265,206)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#7fd18b"/>
+      <text x="12" y="22" fill="#7fd18b" font-weight="bold">h3   (scalar)</text>
+      <text x="12" y="44" fill="#8b90a0" font-family="Menlo, monospace">7000000000  -3000000000</text>
+      <text x="12" y="68" fill="#e7e9ee">7e9 x rng - 3e9</text>
+      <text x="12" y="92" fill="#e7e9ee">jumps from 0 to 1 when the</text>
+      <text x="12" y="110" fill="#e7e9ee">random number passes 3/7</text>
+      <text x="12" y="130" fill="#7fd18b">a step function from a slope</text>
+    </g>
+    <!-- card 6: Snew -->
+    <g transform="translate(506,206)">
+      <rect width="230" height="140" rx="8" fill="#1d2027" stroke="#ebcb8b"/>
+      <text x="12" y="22" fill="#ebcb8b" font-weight="bold">Snew   (map, 1x1 kernels)</text>
+      <text x="12" y="44" fill="#8b90a0" font-family="Menlo, monospace">S 1, carry 1, SC -2, bias 0</text>
+      <text x="12" y="68" fill="#e7e9ee">S + carry - 2 x (S AND carry)</text>
+      <text x="12" y="92" fill="#e7e9ee">1 when exactly one is 1</text>
+      <text x="12" y="110" fill="#e7e9ee">at every score digit at once</text>
+      <text x="12" y="130" fill="#7fd18b">exclusive or (XOR)</text>
+    </g>
+  </g>
+  <g font-size="13" fill="#8b90a0">
+    <text x="24" y="380">How to read a weight file: the numbers are listed in the same order as the inputs on that node's</text>
+    <text x="24" y="398">line in graph.txt. A map input contributes h x w kernel values (row by row); a scalar input contributes</text>
+    <text x="24" y="416">one value. The last number is the bias. Example, graph.txt line:</text>
+    <text x="24" y="440" fill="#e7e9ee" font-family="Menlo, monospace">    scalar mL clamp01 kL okL g0      ->   weights/mL.txt:  1  1  -1  -1</text>
+    <text x="24" y="470">Most files hold 2 to 6 numbers. The largest, Qnew, holds the seven 5 x 5 piece shapes (177 numbers).</text>
+  </g>
+</svg>

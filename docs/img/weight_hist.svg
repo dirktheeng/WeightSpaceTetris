@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="400" rx="14" fill="#14161b"/>
+  <text x="380" y="30" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Every parameter in the network, by value (hand tallied, log scale)</text>
+  <!-- weights -->
+  <text x="40" y="62" fill="#f2a541" font-size="15" font-weight="bold">Weights (948)</text>
+  <g font-size="13" fill="#e7e9ee">
+    <text x="130" y="90" text-anchor="end">0</text><rect x="140" y="78" width="199" height="16" fill="#3a3f4b"/><text x="345" y="90">652  unused stencil positions</text>
+    <text x="130" y="114" text-anchor="end">1</text><rect x="140" y="102" width="173" height="16" fill="#f2a541"/><text x="319" y="114">246  pass a signal (AND / OR / shift)</text>
+    <text x="130" y="138" text-anchor="end">-1</text><rect x="140" y="126" width="127" height="16" fill="#5b8def"/><text x="273" y="138">41  NOT / subtract</text>
+    <text x="130" y="162" text-anchor="end">7e9</text><rect x="140" y="150" width="77" height="16" fill="#7fd18b"/><text x="223" y="162">6  steep slope on the random number</text>
+    <text x="130" y="186" text-anchor="end">-2</text><rect x="140" y="174" width="48" height="16" fill="#e5484d"/><text x="194" y="186">2  game-over veto, XOR</text>
+    <text x="130" y="210" text-anchor="end">-10</text><rect x="140" y="198" width="30" height="16" fill="#b48ead"/><text x="176" y="210">1  "any overlap" veto in okU</text>
+  </g>
+  <!-- biases -->
+  <text x="40" y="246" fill="#f2a541" font-size="15" font-weight="bold">Biases (87)</text>
+  <g font-size="13" fill="#e7e9ee">
+    <text x="130" y="274" text-anchor="end">-1</text><rect x="140" y="262" width="126" height="16" fill="#5b8def"/><text x="272" y="274">40  2-input AND</text>
+    <text x="130" y="296" text-anchor="end">0</text><rect x="140" y="284" width="114" height="16" fill="#3a3f4b"/><text x="260" y="296">25  OR / copy</text>
+    <text x="130" y="318" text-anchor="end">+1</text><rect x="140" y="306" width="81" height="16" fill="#f2a541"/><text x="227" y="318">7  NOT (none of)</text>
+    <text x="130" y="340" text-anchor="end">-2</text><rect x="140" y="328" width="81" height="16" fill="#e5484d"/><text x="227" y="340">7  3-input AND</text>
+    <text x="130" y="362" text-anchor="end">-k e9</text><rect x="140" y="350" width="77" height="16" fill="#7fd18b"/><text x="223" y="362">6  thresholds k/7, k = 1..6</text>
+    <text x="130" y="384" text-anchor="end">-3, -9</text><rect x="140" y="372" width="30" height="16" fill="#b48ead"/><text x="176" y="384">1 each: "4 cells left" (okU), "all 10 in a row" (F)</text>
+  </g>
+  <text x="560" y="62" fill="#8b90a0" font-size="13">14 distinct values in total.</text>
+  <text x="560" y="82" fill="#8b90a0" font-size="13">No fractions anywhere.</text>
+  <text x="560" y="102" fill="#8b90a0" font-size="13">Every value is a decision,</text>
+  <text x="560" y="122" fill="#8b90a0" font-size="13">not a fitted number.</text>
+</svg>

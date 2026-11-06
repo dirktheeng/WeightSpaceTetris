@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="330" rx="14" fill="#14161b"/>
+  <text x="380" y="30" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Nodes at each depth (longest path from the input screen)</text>
+  <!-- baseline y=270, 7px per node -->
+  <line x1="60" y1="270" x2="720" y2="270" stroke="#3a3f4b"/>
+  <g>
+    <!-- d1: 20 map, 9 scalar -->
+    <rect x="70"  y="130" width="34" height="140" fill="#5b8def"/><rect x="70" y="67" width="34" height="63" fill="#f2a541"/>
+    <!-- d2: 3,4 -->
+    <rect x="116" y="249" width="34" height="21" fill="#5b8def"/><rect x="116" y="221" width="34" height="28" fill="#f2a541"/>
+    <!-- d3: 5,3 -->
+    <rect x="162" y="235" width="34" height="35" fill="#5b8def"/><rect x="162" y="214" width="34" height="21" fill="#f2a541"/>
+    <!-- d4: 17,1 -->
+    <rect x="208" y="151" width="34" height="119" fill="#5b8def"/><rect x="208" y="144" width="34" height="7" fill="#f2a541"/>
+    <!-- d5: 3,2 -->
+    <rect x="254" y="249" width="34" height="21" fill="#5b8def"/><rect x="254" y="235" width="34" height="14" fill="#f2a541"/>
+    <!-- d6: 2,1 -->
+    <rect x="300" y="256" width="34" height="14" fill="#5b8def"/><rect x="300" y="249" width="34" height="7" fill="#f2a541"/>
+    <!-- d7: 2 -->
+    <rect x="346" y="256" width="34" height="14" fill="#5b8def"/>
+    <!-- d8: 2 -->
+    <rect x="392" y="256" width="34" height="14" fill="#5b8def"/>
+    <!-- d9: 1 -->
+    <rect x="438" y="263" width="34" height="7" fill="#5b8def"/>
+    <!-- d10: 0,1 -->
+    <rect x="484" y="263" width="34" height="7" fill="#f2a541"/>
+    <!-- d11: 0,2 -->
+    <rect x="530" y="256" width="34" height="14" fill="#f2a541"/>
+    <!-- d12: 3,1 -->
+    <rect x="576" y="249" width="34" height="21" fill="#5b8def"/><rect x="576" y="242" width="34" height="7" fill="#f2a541"/>
+    <!-- d13: 3 -->
+    <rect x="622" y="249" width="34" height="21" fill="#5b8def"/>
+    <!-- d14: 2 -->
+    <rect x="668" y="256" width="34" height="14" fill="#5b8def"/>
+  </g>
+  <g font-size="12" fill="#8b90a0" text-anchor="middle">
+    <text x="87" y="286">1</text><text x="133" y="286">2</text><text x="179" y="286">3</text><text x="225" y="286">4</text><text x="271" y="286">5</text><text x="317" y="286">6</text><text x="363" y="286">7</text>
+    <text x="409" y="286">8</text><text x="455" y="286">9</text><text x="501" y="286">10</text><text x="547" y="286">11</text><text x="593" y="286">12</text><text x="639" y="286">13</text><text x="685" y="286">14</text>
+  </g>
+  <g font-size="12" fill="#e7e9ee" text-anchor="middle">
+    <text x="87" y="60">29</text><text x="133" y="214">7</text><text x="179" y="207">8</text><text x="225" y="137">18</text><text x="271" y="228">5</text><text x="317" y="242">3</text><text x="363" y="249">2</text>
+    <text x="409" y="249">2</text><text x="455" y="256">1</text><text x="501" y="256">1</text><text x="547" y="249">2</text><text x="593" y="235">4</text><text x="639" y="242">3</text><text x="685" y="249">2</text>
+  </g>
+  <text x="390" y="306" fill="#8b90a0" font-size="12" text-anchor="middle">depth</text>
+  <rect x="420" y="72" width="14" height="14" fill="#5b8def"/><text x="440" y="84" fill="#e7e9ee" font-size="13">map node (21 x 16 output, 336 cells)</text>
+  <rect x="420" y="96" width="14" height="14" fill="#f2a541"/><text x="440" y="108" fill="#e7e9ee" font-size="13">scalar node (one number)</text>
+  <text x="420" y="138" fill="#8b90a0" font-size="13">63 map + 24 scalar = 87 nodes.</text>
+  <text x="420" y="158" fill="#8b90a0" font-size="13">The long thin tail (depth 6 to 14) is</text>
+  <text x="420" y="178" fill="#8b90a0" font-size="13">the move -> gravity -> lock chain,</text>
+  <text x="420" y="198" fill="#8b90a0" font-size="13">which must decide in sequence.</text>
+</svg>

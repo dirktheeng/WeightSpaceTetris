@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="330" rx="14" fill="#14161b"/>
+  <text x="380" y="58" fill="#e7e9ee" font-size="30" text-anchor="middle" font-family="Georgia, serif">v(t) = σ( b + F·v(t) + R·v(t−1) + u(t) )</text>
+  <g font-size="13">
+    <rect x="40" y="96" width="160" height="96" rx="8" fill="#1d2027" stroke="#8b90a0"/>
+    <text x="120" y="118" fill="#e7e9ee" text-anchor="middle" font-weight="bold">v(t)</text>
+    <text x="120" y="140" fill="#8b90a0" text-anchor="middle">every node's output</text>
+    <text x="120" y="158" fill="#8b90a0" text-anchor="middle">63 maps x 336 cells</text>
+    <text x="120" y="176" fill="#8b90a0" text-anchor="middle">+ 24 scalars = 21,192</text>
+    <rect x="216" y="96" width="160" height="96" rx="8" fill="#1d2027" stroke="#f2a541"/>
+    <text x="296" y="118" fill="#f2a541" text-anchor="middle" font-weight="bold">F</text>
+    <text x="296" y="140" fill="#8b90a0" text-anchor="middle">same-tick wiring;</text>
+    <text x="296" y="158" fill="#8b90a0" text-anchor="middle">lower triangular,</text>
+    <text x="296" y="176" fill="#8b90a0" text-anchor="middle">14 levels deep</text>
+    <rect x="392" y="96" width="160" height="96" rx="8" fill="#1d2027" stroke="#5b8def"/>
+    <text x="472" y="118" fill="#5b8def" text-anchor="middle" font-weight="bold">R</text>
+    <text x="472" y="140" fill="#8b90a0" text-anchor="middle">last-tick wiring: copies</text>
+    <text x="472" y="158" fill="#8b90a0" text-anchor="middle">the 12 output sheets back</text>
+    <text x="472" y="176" fill="#8b90a0" text-anchor="middle">to the input (the screen)</text>
+    <rect x="568" y="96" width="152" height="96" rx="8" fill="#1d2027" stroke="#7fd18b"/>
+    <text x="644" y="118" fill="#7fd18b" text-anchor="middle" font-weight="bold">u(t), b, σ</text>
+    <text x="644" y="140" fill="#8b90a0" text-anchor="middle">keys + random number;</text>
+    <text x="644" y="158" fill="#8b90a0" text-anchor="middle">biases; clamp01 on</text>
+    <text x="644" y="176" fill="#8b90a0" text-anchor="middle">every node</text>
+  </g>
+  <g font-size="14" fill="#e7e9ee">
+    <text x="40" y="228">F is huge if written out (about 25,000 x 25,000), but almost every entry is 0, and the</text>
+    <text x="40" y="250">nonzero entries repeat: one stencil supplies the same weights to all 336 cells of a map.</text>
+    <text x="40" y="272">So F is stored as 87 small files (1,035 numbers) plus graph.txt, which says how to tile them.</text>
+    <text x="40" y="304" fill="#8b90a0">Because F only points from earlier levels to later ones, one sweep from level 1 to 14 computes v(t) exactly.</text>
+  </g>
+</svg>
