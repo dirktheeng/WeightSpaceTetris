@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="300" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">The score: a binary counter built from neurons</text>
+  <g transform="translate(60,60)" font-family="Menlo, monospace" font-size="15">
+    <text x="0" y="0" fill="#8b90a0">lines</text><text x="90" y="0" fill="#8b90a0">bits (high ... low)</text>
+    <g fill="#e7e9ee">
+      <text x="0" y="30">0</text><text x="90" y="30">0 0 0 0</text>
+      <text x="0" y="55">1</text><text x="90" y="55">0 0 0 <tspan fill="#7fd18b">1</tspan></text>
+      <text x="0" y="80">2</text><text x="90" y="80">0 0 <tspan fill="#7fd18b">1</tspan> 0</text>
+      <text x="0" y="105">3</text><text x="90" y="105">0 0 <tspan fill="#7fd18b">1 1</tspan></text>
+      <text x="0" y="130">4</text><text x="90" y="130">0 <tspan fill="#7fd18b">1</tspan> 0 0</text>
+      <text x="0" y="155">5</text><text x="90" y="155">0 <tspan fill="#7fd18b">1</tspan> 0 <tspan fill="#7fd18b">1</tspan></text>
+    </g>
+    <rect x="-8" y="13" width="200" height="22" rx="4" fill="none" stroke="#f2a541" stroke-width="2">
+      <animate attributeName="y" values="13;38;63;88;113;138;13" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  <g transform="translate(330,70)" font-size="14" fill="#e7e9ee">
+    <text x="0" y="0" fill="#f2a541" font-weight="bold">Adding 1 is "flip bits from the bottom until you</text>
+    <text x="0" y="20" fill="#f2a541" font-weight="bold">flip a 0". The network does it in three neurons:</text>
+    <text x="0" y="52">carry: a bit flips when a line was cleared AND</text>
+    <text x="0" y="72">every bit below it is 1. A tall stencil checks all</text>
+    <text x="0" y="92">lower bits at once.</text>
+    <text x="0" y="122">SC: this bit AND carry.</text>
+    <text x="0" y="152">new bit = bit + carry - 2 x SC</text>
+    <text x="0" y="172" fill="#8b90a0">(that is "exclusive or": 1 if exactly one is 1)</text>
+    <text x="0" y="206">16 bits count up to 65,535 lines.</text>
+  </g>
+</svg>

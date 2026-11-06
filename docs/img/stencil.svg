@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="300" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">A stencil slides over every cell. Stencil [0 0 1] means "copy the cell to my right"</text>
+  <!-- input row -->
+  <text x="40" y="96" fill="#8b90a0" font-size="14">piece row</text>
+  <g transform="translate(150,70)">
+    <g fill="#1d2027" stroke="#2a2e38">
+      <rect x="0" y="0" width="40" height="40"/><rect x="40" y="0" width="40" height="40"/><rect x="80" y="0" width="40" height="40"/>
+      <rect x="120" y="0" width="40" height="40"/><rect x="160" y="0" width="40" height="40"/><rect x="200" y="0" width="40" height="40"/>
+      <rect x="240" y="0" width="40" height="40"/><rect x="280" y="0" width="40" height="40"/><rect x="320" y="0" width="40" height="40"/>
+      <rect x="360" y="0" width="40" height="40"/>
+    </g>
+    <rect x="202" y="2" width="36" height="36" fill="#f2a541"/><rect x="242" y="2" width="36" height="36" fill="#f2a541"/>
+    <!-- sliding window -->
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;40,0;80,0;120,0;160,0;200,0;240,0;280,0;0,0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+      <rect x="-40" y="-6" width="120" height="52" rx="6" fill="none" stroke="#7fd18b" stroke-width="3"/>
+      <text x="-20" y="64" fill="#8b90a0" font-size="14" text-anchor="middle">0</text>
+      <text x="20" y="64" fill="#8b90a0" font-size="14" text-anchor="middle">0</text>
+      <text x="60" y="64" fill="#7fd18b" font-size="14" text-anchor="middle" font-weight="bold">1</text>
+      <path d="M60,74 C60,110 20,100 20,128" fill="none" stroke="#7fd18b" stroke-width="2"/>
+      <circle cx="20" cy="132" r="4" fill="#7fd18b"/>
+    </g>
+  </g>
+  <!-- output row -->
+  <text x="40" y="226" fill="#8b90a0" font-size="14">output</text>
+  <g transform="translate(150,200)">
+    <g fill="#1d2027" stroke="#2a2e38">
+      <rect x="0" y="0" width="40" height="40"/><rect x="40" y="0" width="40" height="40"/><rect x="80" y="0" width="40" height="40"/>
+      <rect x="120" y="0" width="40" height="40"/><rect x="160" y="0" width="40" height="40"/><rect x="200" y="0" width="40" height="40"/>
+      <rect x="240" y="0" width="40" height="40"/><rect x="280" y="0" width="40" height="40"/><rect x="320" y="0" width="40" height="40"/>
+      <rect x="360" y="0" width="40" height="40"/>
+    </g>
+    <rect x="162" y="2" width="36" height="36" fill="#f2a541" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;0;1;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="202" y="2" width="36" height="36" fill="#f2a541" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;0;0;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  <text x="380" y="278" fill="#e7e9ee" font-size="14" text-anchor="middle">Result: the whole piece moved one cell LEFT. The same 3 numbers work at every position on the board.</text>
+</svg>

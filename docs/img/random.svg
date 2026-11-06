@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="250" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Choosing the next piece from one random number between 0 and 1</text>
+  <g transform="translate(40,70)" font-size="14" text-anchor="middle">
+    <g>
+      <rect x="0" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="48" y="26" fill="#e7e9ee">I</text>
+      <rect x="97" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="145" y="26" fill="#e7e9ee">O</text>
+      <rect x="194" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="242" y="26" fill="#e7e9ee">T</text>
+      <rect x="291" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="339" y="26" fill="#e7e9ee">S</text>
+      <rect x="388" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="436" y="26" fill="#e7e9ee">Z</text>
+      <rect x="485" y="0" width="97" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="533" y="26" fill="#e7e9ee">J</text>
+      <rect x="582" y="0" width="98" height="40" fill="#1d2027" stroke="#2a2e38"/><text x="631" y="26" fill="#e7e9ee">L</text>
+    </g>
+    <text x="0" y="60" fill="#8b90a0">0</text><text x="97" y="60" fill="#8b90a0">1/7</text><text x="194" y="60" fill="#8b90a0">2/7</text>
+    <text x="291" y="60" fill="#8b90a0">3/7</text><text x="388" y="60" fill="#8b90a0">4/7</text><text x="485" y="60" fill="#8b90a0">5/7</text>
+    <text x="582" y="60" fill="#8b90a0">6/7</text><text x="680" y="60" fill="#8b90a0">1</text>
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="60,0;410,0;250,0;620,0;150,0;520,0;30,0;60,0" calcMode="discrete" dur="7s" repeatCount="indefinite"/>
+      <path d="M0,-14 L0,48" stroke="#f2a541" stroke-width="3"/>
+      <circle cx="0" cy="-16" r="6" fill="#f2a541"/>
+    </g>
+  </g>
+  <g font-size="14" fill="#e7e9ee">
+    <text x="40" y="168">Six "threshold" neurons each ask: is the number at least 1/7? at least 2/7? ... at least 6/7?</text>
+    <text x="40" y="190">Piece k is chosen when threshold k says yes and threshold k+1 says no. Exactly one piece fits.</text>
+    <text x="40" y="212">Each chosen piece then stamps its shape (a 5 x 5 stencil) into the preview box.</text>
+    <text x="40" y="234" fill="#8b90a0">The thresholds use a very steep slope so the answer is always a clean 0 or 1.</text>
+  </g>
+</svg>

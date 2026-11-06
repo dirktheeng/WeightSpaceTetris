@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="420" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">One step of the network, top to bottom</text>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#8b90a0"/></marker></defs>
+  <g font-size="14">
+    <g id="b0"><rect x="40" y="52" width="680" height="50" rx="8" fill="#1d2027" stroke="#8b90a0"/>
+      <text x="56" y="74" fill="#e7e9ee" font-weight="bold">0. Look at the screen</text>
+      <text x="56" y="93" fill="#8b90a0">Is the game over? Is there a falling piece? Is any row full? Is it time for gravity?</text></g>
+    <g><rect x="40" y="118" width="680" height="50" rx="8" fill="#1d2027" stroke="#f2a541"/>
+      <text x="56" y="140" fill="#f2a541" font-weight="bold">1. Player move</text>
+      <text x="56" y="159" fill="#8b90a0">Try left, right and rotate. Keep only the one whose key is pressed and that does not collide.</text></g>
+    <g><rect x="40" y="184" width="680" height="50" rx="8" fill="#1d2027" stroke="#f2a541"/>
+      <text x="56" y="206" fill="#f2a541" font-weight="bold">2. Gravity</text>
+      <text x="56" y="225" fill="#8b90a0">On a gravity tick or DOWN key: fall one row if free, otherwise lock the piece into the stack.</text></g>
+    <g><rect x="40" y="250" width="680" height="50" rx="8" fill="#1d2027" stroke="#5b8def"/>
+      <text x="56" y="272" fill="#5b8def" font-weight="bold">3. Stack</text>
+      <text x="56" y="291" fill="#8b90a0">Add locked cells. If a row is full, drop everything above it by one row (one row per step).</text></g>
+    <g><rect x="40" y="316" width="680" height="50" rx="8" fill="#1d2027" stroke="#7fd18b"/>
+      <text x="56" y="338" fill="#7fd18b" font-weight="bold">4. Spawn, preview, timer, score, game over</text>
+      <text x="56" y="357" fill="#8b90a0">No piece and no full row: copy the preview in, pick a new preview, check for top-out.</text></g>
+  </g>
+  <rect x="34" y="46" width="692" height="62" rx="10" fill="none" stroke="#f2a541" stroke-width="3">
+    <animate attributeName="y" values="46;112;178;244;310;46" keyTimes="0;.2;.4;.6;.8;1" calcMode="discrete" dur="5s" repeatCount="indefinite"/>
+  </rect>
+  <text x="380" y="398" fill="#e7e9ee" font-size="14" text-anchor="middle">All of this is one forward pass through 87 nodes. Then the new screen is drawn and fed back in.</text>
+</svg>

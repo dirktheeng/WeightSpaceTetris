@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="400" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Rotation: every cell swings a quarter turn clockwise around the pivot</text>
+  <g transform="translate(60,70)">
+    <g stroke="#2a2e38" fill="#1d2027">
+      <rect x="0" y="0" width="200" height="200"/>
+      <path d="M40,0V200M80,0V200M120,0V200M160,0V200M0,40H200M0,80H200M0,120H200M0,160H200" fill="none"/>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="rotate" values="0 100 100;0 100 100;90 100 100;90 100 100;180 100 100;180 100 100;270 100 100;270 100 100;360 100 100" keyTimes="0;.15;.25;.4;.5;.65;.75;.9;1" dur="6s" repeatCount="indefinite"/>
+      <rect x="42" y="82" width="36" height="36" fill="#f2a541"/>
+      <rect x="122" y="82" width="36" height="36" fill="#f2a541"/>
+      <rect x="82" y="42" width="36" height="36" fill="#f2a541"/>
+    </g>
+    <rect x="82" y="82" width="36" height="36" fill="#c47f1f"/>
+    <text x="100" y="105" fill="#0e1014" font-size="12" text-anchor="middle" font-weight="bold">P</text>
+    <text x="100" y="230" fill="#8b90a0" font-size="13" text-anchor="middle">a T piece turning around its pivot P</text>
+  </g>
+  <g transform="translate(320,70)" font-size="14">
+    <text x="0" y="0" fill="#f2a541" font-weight="bold">How a neuron does this</text>
+    <text x="0" y="26" fill="#e7e9ee">A piece cell sits at some offset from the pivot,</text>
+    <text x="0" y="46" fill="#e7e9ee">for example "one to the right". A quarter turn</text>
+    <text x="0" y="66" fill="#e7e9ee">sends it to "one below". So one detector asks:</text>
+    <text x="0" y="96" fill="#7fd18b">"Is the pivot just above me AND is there a piece</text>
+    <text x="0" y="116" fill="#7fd18b"> cell one up and one to the right of me?"</text>
+    <text x="0" y="146" fill="#e7e9ee">If yes, this cell belongs to the rotated piece.</text>
+    <text x="0" y="176" fill="#e7e9ee">12 detectors cover every offset any piece uses:</text>
+    <text x="0" y="196" fill="#e7e9ee">the 8 neighbors, plus 4 cells two steps away</text>
+    <text x="0" y="216" fill="#e7e9ee">(only the long I piece reaches that far).</text>
+    <text x="0" y="246" fill="#e7e9ee">Then the turned piece is collision-tested. If it</text>
+    <text x="0" y="266" fill="#e7e9ee">overlaps anything or loses a cell off the screen,</text>
+    <text x="0" y="286" fill="#e7e9ee">the turn is refused. The O piece has no pivot, so</text>
+    <text x="0" y="306" fill="#e7e9ee">its "turn" is empty and is always refused.</text>
+  </g>
+</svg>

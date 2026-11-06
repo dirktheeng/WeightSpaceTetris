@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="360" rx="14" fill="#14161b"/>
+  <text x="380" y="32" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">Finding full rows and clearing them</text>
+  <g transform="translate(40,60)" font-size="14">
+    <text x="0" y="0" fill="#f2a541" font-weight="bold">Step A: count across the row</text>
+    <g transform="translate(0,14)">
+      <rect x="0" y="0" width="20" height="24" fill="#3a3f4b"/>
+      <g fill="#5b8def"><rect x="22" y="2" width="20" height="20"/><rect x="44" y="2" width="20" height="20"/><rect x="66" y="2" width="20" height="20"/><rect x="88" y="2" width="20" height="20"/><rect x="110" y="2" width="20" height="20"/><rect x="132" y="2" width="20" height="20"/><rect x="154" y="2" width="20" height="20"/><rect x="176" y="2" width="20" height="20"/><rect x="198" y="2" width="20" height="20"/><rect x="220" y="2" width="20" height="20"/></g>
+      <rect x="242" y="0" width="20" height="24" fill="#3a3f4b"/>
+      <rect x="20" y="-4" width="222" height="32" rx="4" fill="none" stroke="#7fd18b" stroke-width="2">
+        <animate attributeName="opacity" values="1;.2;1" dur="1.5s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <text x="0" y="66" fill="#e7e9ee">A stencil of 19 ones, laid sideways, counts locked</text>
+    <text x="0" y="86" fill="#e7e9ee">cells within 9 columns either side. The bias is -9,</text>
+    <text x="0" y="106" fill="#e7e9ee">so only a cell that sees all 10 lights up.</text>
+    <text x="0" y="126" fill="#8b90a0">Walls are on their own sheet, so they never count.</text>
+    <text x="0" y="166" fill="#f2a541" font-weight="bold">Step B: mark everything at or above it</text>
+    <text x="0" y="190" fill="#e7e9ee">A tall stencil looks downward up to 19 rows. A cell is</text>
+    <text x="0" y="210" fill="#e7e9ee">marked "move down" if a full row is at or below it.</text>
+    <text x="0" y="246" fill="#f2a541" font-weight="bold">Step C: new stack = unmarked cells stay,</text>
+    <text x="0" y="266" fill="#f2a541" font-weight="bold">marked cells take the cell from above</text>
+  </g>
+  <!-- animated column clear -->
+  <g transform="translate(470,60)">
+    <rect x="0" y="0" width="16" height="230" fill="#3a3f4b"/><rect x="176" y="0" width="16" height="230" fill="#3a3f4b"/>
+    <rect x="0" y="230" width="192" height="16" fill="#3a3f4b"/>
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,20;0,20" keyTimes="0;.45;.55;1" dur="4s" repeatCount="indefinite"/>
+      <rect x="36" y="150" width="20" height="20" fill="#5b8def"/><rect x="96" y="150" width="20" height="20" fill="#5b8def"/>
+      <rect x="16" y="170" width="20" height="20" fill="#5b8def"/><rect x="56" y="170" width="20" height="20" fill="#5b8def"/>
+      <rect x="116" y="170" width="20" height="20" fill="#5b8def"/>
+    </g>
+    <g>
+      <animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.45;.5;1" dur="4s" repeatCount="indefinite"/>
+      <rect x="16" y="190" width="160" height="20" fill="#7fd18b"/>
+    </g>
+    <rect x="16" y="210" width="120" height="20" fill="#5b8def"/><rect x="156" y="210" width="20" height="20" fill="#5b8def"/>
+    <text x="96" y="268" fill="#8b90a0" font-size="13" text-anchor="middle">full row (green) vanishes,</text>
+    <text x="96" y="286" fill="#8b90a0" font-size="13" text-anchor="middle">rows above drop one row</text>
+  </g>
+</svg>
