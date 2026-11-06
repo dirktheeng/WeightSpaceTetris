@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="Helvetica, Arial, sans-serif">
-  <rect width="760" height="300" rx="14" fill="#14161b"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 350" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="350" rx="14" fill="#14161b"/>
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0,0 L10,5 L0,10 z" fill="#8b90a0"/>
@@ -31,10 +31,10 @@
   <path d="M335,64 L370,93" stroke="#8b90a0" stroke-width="2" marker-end="url(#ar)"/>
   <path d="M335,236 L370,197" stroke="#8b90a0" stroke-width="2" marker-end="url(#ar)"/>
   <path d="M490,145 L568,145" stroke="#8b90a0" stroke-width="2" marker-end="url(#ar)"/>
-  <path id="back" d="M645,220 C645,300 115,300 115,222" fill="none" stroke="#8b90a0" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar)"/>
-  <text x="560" y="292" fill="#8b90a0" font-size="12" text-anchor="middle">repeats 10 times per second</text>
+  <path id="back" d="M645,220 C645,345 115,345 115,222" fill="none" stroke="#8b90a0" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar)"/>
+  <text x="380" y="338" fill="#8b90a0" font-size="12" text-anchor="middle">repeats 10 times per second</text>
   <!-- travelling pulse -->
   <circle r="7" fill="#f2a541">
-    <animateMotion dur="3s" repeatCount="indefinite" path="M115,145 L395,145 L645,145 L645,220 C645,300 115,300 115,222 L115,145"/>
+    <animateMotion dur="3s" repeatCount="indefinite" path="M115,145 L395,145 L645,145 L645,220 C645,345 115,345 115,222 L115,145"/>
   </circle>
 </svg>

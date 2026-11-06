@@ -1,47 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 470" font-family="Helvetica, Arial, sans-serif">
-  <rect width="760" height="470" rx="14" fill="#14161b"/>
-  <text x="380" y="30" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">How the nine parts connect (from graph.txt; arrows show what crosses)</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 510" font-family="Helvetica, Arial, sans-serif">
+  <rect width="760" height="510" rx="14" fill="#14161b"/>
+  <text x="380" y="28" fill="#e7e9ee" font-size="17" text-anchor="middle" font-weight="bold">How the nine parts connect (node counts in brackets)</text>
   <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#8b90a0"/></marker></defs>
+
+  <!-- boxes -->
   <g font-size="13" text-anchor="middle">
-    <rect x="300" y="48" width="160" height="40" rx="8" fill="#1d2027" stroke="#e7e9ee"/><text x="380" y="73" fill="#e7e9ee" font-weight="bold">input screen + keys + rng</text>
-    <rect x="290" y="128" width="180" height="44" rx="8" fill="#1d2027" stroke="#8b90a0"/><text x="380" y="148" fill="#8b90a0" font-weight="bold">Global facts (5)</text><text x="380" y="164" fill="#8b90a0" font-size="11">g0 aE F fF gt</text>
-    <rect x="40" y="200" width="190" height="44" rx="8" fill="#1d2027" stroke="#f2a541"/><text x="135" y="220" fill="#f2a541" font-weight="bold">Move and rotate (32)</text><text x="135" y="236" fill="#8b90a0" font-size="11">stage 1</text>
-    <rect x="40" y="290" width="190" height="44" rx="8" fill="#1d2027" stroke="#e0884a"/><text x="135" y="310" fill="#e0884a" font-weight="bold">Gravity and lock (10)</text><text x="135" y="326" fill="#8b90a0" font-size="11">stage 2</text>
-    <rect x="285" y="290" width="190" height="44" rx="8" fill="#1d2027" stroke="#5b8def"/><text x="380" y="310" fill="#5b8def" font-weight="bold">Stack and line clear (5)</text><text x="380" y="326" fill="#8b90a0" font-size="11">L channel</text>
-    <rect x="530" y="200" width="190" height="44" rx="8" fill="#1d2027" stroke="#e5484d"/><text x="625" y="220" fill="#e5484d" font-weight="bold">Spawn and game over (8)</text><text x="625" y="236" fill="#8b90a0" font-size="11">stage 3</text>
-    <rect x="530" y="290" width="190" height="44" rx="8" fill="#1d2027" stroke="#7fd18b"/><text x="625" y="310" fill="#7fd18b" font-weight="bold">Preview and random (17)</text><text x="625" y="326" fill="#8b90a0" font-size="11">Q, R channels</text>
-    <rect x="285" y="200" width="88" height="44" rx="8" fill="#1d2027" stroke="#b48ead"/><text x="329" y="220" fill="#b48ead" font-weight="bold">Timer (3)</text><text x="329" y="236" fill="#8b90a0" font-size="11">T</text>
-    <rect x="387" y="200" width="88" height="44" rx="8" fill="#1d2027" stroke="#ebcb8b"/><text x="431" y="220" fill="#ebcb8b" font-weight="bold">Score (3)</text><text x="431" y="236" fill="#8b90a0" font-size="11">S</text>
-    <rect x="300" y="390" width="160" height="40" rx="8" fill="#1d2027" stroke="#e7e9ee"/><text x="380" y="415" fill="#e7e9ee" font-weight="bold">next screen</text>
-    <rect x="40" y="390" width="130" height="40" rx="8" fill="#1d2027" stroke="#4c566a"/><text x="105" y="415" fill="#8b90a0" font-weight="bold">Fixtures (4)</text>
+    <rect x="200" y="44" width="360" height="34" rx="8" fill="#1d2027" stroke="#e7e9ee"/>
+    <text x="380" y="66" fill="#e7e9ee">input: screen (12 channels), key, random number</text>
+
+    <rect x="20" y="100" width="710" height="40" rx="8" fill="#1d2027" stroke="#8b90a0"/>
+    <text x="375" y="118" fill="#e7e9ee" font-weight="bold">Global facts (5)</text>
+    <text x="375" y="133" fill="#8b90a0" font-size="11">g0 game over · aE no falling piece · F, fF full rows · gt gravity tick</text>
+
+    <rect x="20" y="190" width="140" height="60" rx="8" fill="#1d2027" stroke="#f2a541"/>
+    <text x="90" y="216" fill="#f2a541" font-weight="bold">Move, rotate (32)</text>
+    <text x="90" y="234" fill="#8b90a0" font-size="11">stage 1</text>
+
+    <rect x="210" y="190" width="140" height="60" rx="8" fill="#1d2027" stroke="#e0884a"/>
+    <text x="280" y="216" fill="#e0884a" font-weight="bold">Gravity, lock (10)</text>
+    <text x="280" y="234" fill="#8b90a0" font-size="11">stage 2</text>
+
+    <rect x="400" y="190" width="140" height="60" rx="8" fill="#1d2027" stroke="#e5484d"/>
+    <text x="470" y="216" fill="#e5484d" font-weight="bold">Spawn, game over (8)</text>
+    <text x="470" y="234" fill="#8b90a0" font-size="11">stage 3</text>
+
+    <rect x="590" y="190" width="140" height="60" rx="8" fill="#1d2027" stroke="#7fd18b"/>
+    <text x="660" y="216" fill="#7fd18b" font-weight="bold">Preview, random (17)</text>
+    <text x="660" y="234" fill="#8b90a0" font-size="11">also reads rng</text>
+
+    <rect x="60" y="310" width="240" height="50" rx="8" fill="#1d2027" stroke="#5b8def"/>
+    <text x="180" y="332" fill="#5b8def" font-weight="bold">Stack, line clear (5)</text>
+    <text x="180" y="349" fill="#8b90a0" font-size="11">also reads F from Global facts</text>
+
+    <rect x="320" y="310" width="120" height="50" rx="8" fill="#1d2027" stroke="#b48ead"/>
+    <text x="380" y="332" fill="#b48ead" font-weight="bold">Timer (3)</text>
+    <text x="380" y="349" fill="#8b90a0" font-size="11">reads gt</text>
+
+    <rect x="500" y="310" width="120" height="50" rx="8" fill="#1d2027" stroke="#ebcb8b"/>
+    <text x="560" y="332" fill="#ebcb8b" font-weight="bold">Score (3)</text>
+    <text x="560" y="349" fill="#8b90a0" font-size="11">reads fF</text>
+
+    <rect x="20" y="420" width="150" height="44" rx="8" fill="#1d2027" stroke="#4c566a"/>
+    <text x="95" y="438" fill="#8b90a0" font-weight="bold">Fixtures (4)</text>
+    <text x="95" y="455" fill="#8b90a0" font-size="11">W, MQ, MS, MT copied</text>
+
+    <rect x="220" y="420" width="400" height="44" rx="8" fill="#1d2027" stroke="#e7e9ee"/>
+    <text x="420" y="447" fill="#e7e9ee" font-weight="bold">next screen</text>
   </g>
+
+  <!-- arrows -->
   <g stroke="#8b90a0" stroke-width="1.6" fill="none" marker-end="url(#m)">
-    <path d="M380,88 V126"/>
-    <path d="M300,160 C230,170 160,180 140,198"/>
-    <path d="M330,172 V198"/>
-    <path d="M431,172 V198"/>
-    <path d="M460,160 C540,170 600,180 620,198"/>
-    <path d="M370,172 C360,230 370,260 375,288"/>
-    <path d="M135,244 V288"/>
-    <path d="M230,232 C260,260 280,280 300,292"/>
-    <path d="M230,312 H283"/>
-    <path d="M230,320 C380,360 500,300 528,232"/>
-    <path d="M625,244 V288"/>
-    <path d="M380,334 V388"/>
-    <path d="M625,334 C620,380 520,405 462,410"/>
-    <path d="M720,222 C756,300 740,445 462,422"/>
-    <path d="M329,244 C300,330 330,370 360,388"/>
-    <path d="M431,244 C470,330 420,370 400,388"/>
-    <path d="M170,410 H298"/>
+    <path d="M380,78 V98"/>
+    <path d="M90,140 V188"/>
+    <path d="M280,140 V188"/>
+    <path d="M470,140 V188"/>
+    <path d="M160,220 H208"/>
+    <path d="M350,220 H398"/>
+    <path d="M540,220 H588"/>
+    <path d="M90,250 V308"/>
+    <path d="M280,250 V308"/>
+    <path d="M470,250 V418"/>
+    <path d="M660,250 V441 H622"/>
+    <path d="M180,360 V418"/>
+    <path d="M380,360 V418"/>
+    <path d="M560,360 V418"/>
+    <path d="M170,442 H218"/>
   </g>
-  <g font-size="11" fill="#8b90a0">
-    <text x="190" y="176">g0 veto</text>
-    <text x="232" y="268">A1 (lock cells)</text>
-    <text x="236" y="306">lock</text>
-    <text x="400" y="270">F (rows)</text>
-    <text x="500" y="176">aE, fF, g0</text>
-    <text x="300" y="352">A2, P2 (fallen piece)</text>
-    <text x="635" y="270">e (spawn)</text>
+
+  <!-- labels: what crosses each arrow -->
+  <g font-size="11" fill="#e7e9ee">
+    <text x="96" y="168">g0</text>
+    <text x="286" y="168">gt, g0</text>
+    <text x="476" y="168">aE, fF, g0</text>
+    <text x="166" y="212">A1, P1</text>
+    <text x="356" y="212">A2, P2</text>
+    <text x="560" y="212">e</text>
+    <text x="96" y="284">A1</text>
+    <text x="286" y="284">lock</text>
+    <text x="476" y="290">A, P, G</text>
+    <text x="666" y="290">Q, R</text>
+    <text x="186" y="394">L</text>
+    <text x="386" y="394">T</text>
+    <text x="566" y="394">S</text>
   </g>
-  <text x="380" y="458" fill="#8b90a0" font-size="12" text-anchor="middle">Node counts in brackets. Every part reads the input screen; only these cross-part links exist.</text>
+
+  <text x="380" y="494" fill="#8b90a0" font-size="12" text-anchor="middle">Every part also reads the input screen directly. No other links exist.</text>
 </svg>

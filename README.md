@@ -70,7 +70,7 @@ All four acceptance criteria are met: a complete game is playable to top-out; ev
 - **No hard drop, no hold, no lock delay, no levels.**
 - **Classic rotation.** Pieces turn about a pivot cell, like NES Tetris, with no SRS wall kicks.
 - **Uniform random pieces,** not a 7-bag.
-- **Tested in Chromium and Node only.**
+- **Browser testing is limited.** The network was tested in the Node harness, and the built page's own script was run headless in Node. Play in a real browser has not been confirmed by the author.
 
 ## How it works
 
@@ -100,7 +100,7 @@ v(t) = σ( b + F·v(t) + R·v(t−1) + u(t) )
 |---|---|---|
 | `v(t)` | every node output at tick `t`, flattened | 21,192 numbers |
 | `F` | same-tick wiring: which outputs feed which nodes, and how strongly | about 25,000 × 25,000, almost all zero |
-| `R` | last-tick wiring: an identity that copies the 12 output channels into the 12 input channels | 4,032 ones |
+| `R` | last-tick wiring: an identity that copies the 12 output channels into the 12 input channels. It holds no weights; the host's loop does the copy | 4,032 cells |
 | `b` | one bias per node, shared by all its cells | 87 numbers |
 | `u(t)` | outside input: 4 key bits and 1 random number | 5 numbers |
 | `σ` | `clamp01(x) = min(1, max(0, x))`, for every node | |
@@ -119,8 +119,8 @@ Depth is the longest path from the input screen. These counts come from `graph.t
 |---:|---:|---|
 | 1 | 29 | raw facts: overlaps for left and right, the 12 rotation detectors, row-full map, thresholds on the random number, timer shift, fixtures |
 | 2 | 7 | reductions (any overlap? any full row?), the rotated piece, gravity enable |
-| 3 to 5 | 31 | move decisions, spawn decision, line-clear plan, preview selection, score carry |
-| 6 to 8 | 7 | combine the chosen move into one piece and pivot |
+| 3 to 5 | 31 | move and rotate decisions, the spawn decision, keep or shift for each stack cell, preview selection, score carry |
+| 6 to 8 | 7 | combine the chosen move into one piece and pivot; the game-over flag |
 | 9 to 11 | 4 | try falling one row, decide fall or lock |
 | 12 to 14 | 9 | apply gravity, merge in a spawned piece, write the new stack |
 
@@ -179,7 +179,7 @@ Tetris rules are the same at every board position, so each rule is a convolution
 | fall | the same, shifting down one row |
 | rotate | 12 pairs of shifts (pivot, piece cell), ANDed, then ORed |
 | full row | a 1 × 19 all-ones kernel, threshold at 10 |
-| clear | a 39 × 1 kernel marks everything above a full row; those cells take the cell above |
+| clear | a 39 × 1 kernel marks every cell at or above a full row; marked cells take the value of the cell above |
 | spawn | shift the preview box 8 columns left |
 | score | a 31 × 1 kernel checks all lower bits for a carry |
 
@@ -218,7 +218,7 @@ This animation is recorded from real forward passes. Each box is a node, lit whe
 | lock | 27 | 129 |
 | line clear | 21 | 301 |
 
-Most of the "idle" activity is the four fixture nodes copying walls and markers. A line clear lights the most cells because the whole stack above the full row is rewritten. The engine evaluates every node densely, with no sparsity tricks, and one step still takes about 0.36 ms on a single 2.1 GHz Xeon core.
+Most of the active *cells* on an idle tick belong to the four fixture nodes copying walls and markers (76 cells). A line clear lights the most cells because the whole stack above the full row is rewritten. The engine evaluates every node densely, with no sparsity tricks, and one step still takes about 0.36 ms on a single 2.1 GHz Xeon core.
 
 ## How it is put together
 
