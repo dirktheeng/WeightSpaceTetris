@@ -10,7 +10,7 @@
       <rect x="240" y="0" width="40" height="40"/><rect x="280" y="0" width="40" height="40"/><rect x="320" y="0" width="40" height="40"/>
       <rect x="360" y="0" width="40" height="40"/>
     </g>
-    <rect x="202" y="2" width="36" height="36" fill="#f2a541"/><rect x="242" y="2" width="36" height="36" fill="#f2a541"/>
+    <rect x="162" y="2" width="36" height="36" fill="#f2a541"/><rect x="202" y="2" width="36" height="36" fill="#c47f1f"/><rect x="242" y="2" width="36" height="36" fill="#f2a541"/><rect x="282" y="2" width="36" height="36" fill="#f2a541"/>
     <!-- sliding window -->
     <g>
       <animateTransform attributeName="transform" type="translate" values="0,0;40,0;80,0;120,0;160,0;200,0;240,0;280,0;0,0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
@@ -31,10 +31,16 @@
       <rect x="240" y="0" width="40" height="40"/><rect x="280" y="0" width="40" height="40"/><rect x="320" y="0" width="40" height="40"/>
       <rect x="360" y="0" width="40" height="40"/>
     </g>
-    <rect x="162" y="2" width="36" height="36" fill="#f2a541" opacity="0">
-      <animate attributeName="opacity" values="0;0;0;0;0;1;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    <rect x="122" y="2" width="36" height="36" fill="#f2a541" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1;1;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="162" y="2" width="36" height="36" fill="#c47f1f" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;1;1;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
     </rect>
     <rect x="202" y="2" width="36" height="36" fill="#f2a541" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;0;1;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="242" y="2" width="36" height="36" fill="#f2a541" opacity="0">
       <animate attributeName="opacity" values="0;0;0;0;0;0;1;1;0" keyTimes="0;.125;.25;.375;.5;.625;.75;.875;1" calcMode="discrete" dur="6s" repeatCount="indefinite"/>
     </rect>
   </g>
