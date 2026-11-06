@@ -161,11 +161,61 @@ The score is a binary counter of cleared lines, low bit at the bottom (row 19). 
 
 87 nodes and 1,035 numbers. Only 14 distinct values appear: 0, 1, -1, -2, -3, -9, -10, 7×10⁹ and -1×10⁹..-6×10⁹. Most files hold 2 to 6 numbers. The large files are mostly zeros in long kernels: `F` (19), `C` (39), `carry` (62), the three spawn copies (17 each), and `Qnew` (seven 5×5 shapes).
 
+## Index of every weight file
+
+| File | Purpose |
+|---|---|
+| `g0` | game over is set (any G cell) |
+| `aE` | no falling piece |
+| `F` | cell lies in a full row |
+| `fF` | some row is full |
+| `gt` | gravity tick (timer field empty) |
+| `ovL`, `ovR` | overlap if the piece moved left / right |
+| `U1`..`U12` | rotation: one detector per offset from the pivot |
+| `AU` | rotated piece |
+| `ovU` | overlap of the rotated piece |
+| `okL`, `okR`, `okU` | move left / right / rotate is legal |
+| `mL`, `mR`, `mU` | do that move: key AND legal AND not game over |
+| `st1` | no move this step |
+| `A1L`, `A1R`, `A1U`, `A1S` | gated candidate pieces |
+| `A1` | piece after the player's move |
+| `P1L`, `P1R`, `P1S`, `P1` | pivot after the player's move |
+| `ovD` | overlap if the piece falls |
+| `okD` | falling is legal |
+| `g` | gravity applies this step (tick or down key, not game over) |
+| `mD` | fall one row |
+| `lock` | lock the piece |
+| `st2` | neither fall nor lock |
+| `A2D`, `A2S`, `P2D`, `P2S` | piece and pivot after gravity |
+| `e` | spawn this step |
+| `ASp`, `PSp` | preview copied into the spawn spot |
+| `Anew`, `Pnew` | next falling piece and pivot (output) |
+| `ovS` | spawned piece overlaps the stack |
+| `ge` | game over happens now |
+| `Gnew` | next game-over plane (output) |
+| `LK` | cells added by locking |
+| `C` | cell is at or above a full row |
+| `LKeep` | locked cells that stay |
+| `LSh` | locked cells that move down one row |
+| `Lnew` | next locked plane (output) |
+| `h1`..`h6` | rng ≥ k/7 steps |
+| `D0`..`D6` | anchor marked for piece I, O, T, S, Z, J, L on a spawn step |
+| `QK`, `RK` | preview kept when no spawn happens |
+| `Qnew`, `Rnew` | next preview cells and pivot (output) |
+| `TS` | timer token moves down |
+| `TI` | timer token re-inserted at the start |
+| `Tnew` | next timer plane (output) |
+| `carry` | binary carry at each score cell |
+| `SC` | score bit AND carry |
+| `Snew` | next score bits (output) |
+| `Wc`, `MQc`, `MSc`, `MTc` | fixtures copied through unchanged |
+
 ## How it was checked
 
 All checks used forward passes through `sim.js` with key scripts, with the printed screens read by eye:
 * moving into both walls stops the piece; soft drop, locking and respawn work;
 * T and I rotate through all four states, and an I rotation into the right wall is refused;
+* for each of the seven pieces, a test screen `tests/clear_<piece>.txt` has a bottom row full except exactly that piece's footprint. Each piece was moved left and right, then soft-dropped. In every case the row cleared, the piece's remaining cells dropped one row, and the score went from 0 to 1. Run them with `node sim.js tests/clear_T.txt "lr$(printf 'd%.0s' {1..19})...." 1 1`;
 * four lines clear one per step with the stack shifting down, and the score bits count up in binary;
 * holding drop with no moves tops out the board, shows the overlap, and freezes all input;
 * sweeping `rng` across its seven bins produces I, O, T, S, Z, J, L in the preview;
